@@ -11,7 +11,7 @@
     "discord.js": "^13.0.1",
     "dotenv": "^10.0.0",
     "express": "^4.17.3",
-    "google-translate-api": "^2.3.0"
+    "google-translate-api": "^2.2.0"
   },
   "author": "Your Name",
   "license": "MIT"
