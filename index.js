@@ -2,31 +2,7 @@ const { exec } = require("child_process");
 const fs = require("fs");
 require('./keep_alive');
 
-// تثبيت المكتبات المطلوبة من ملف requirements.txt
-const installDependencies = () => {
-  if (fs.existsSync("requirements.txt")) {
-    const libraries = fs
-      .readFileSync("requirements.txt", "utf-8")
-      .split("\n")
-      .filter((lib) => lib.trim() !== "");
-    libraries.forEach((lib) => {
-      exec(`npm install ${lib}`, (err, stdout, stderr) => {
-        if (err) {
-          console.error(`خطأ في تثبيت المكتبة ${lib}:`, err);
-          return;
-        }
-        console.log(`تم تثبيت المكتبة ${lib} بنجاح.`);
-        console.log(stdout);
-      });
-    });
-  } else {
-    console.error("لم يتم العثور على ملف requirements.txt");
-  }
-};
-
-// تثبيت المكتبات
-installDependencies();
-
+//
 // باقي الكود يبدأ هنا بعد تثبيت المكتبات
 const { Client, Intents, MessageEmbed } = require("discord.js");
 const axios = require("axios");
