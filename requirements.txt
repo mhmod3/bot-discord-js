@@ -1,0 +1,5 @@
+discord.js@13.0.0
+axios
+google-translate-api-x
+dotenv
+express
