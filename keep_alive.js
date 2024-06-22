@@ -1,11 +1,14 @@
-const express = require('express');
-const app = express();
-const port = 3000;
+const express = require("express");
+const server = express();
 
-app.get('/', (req, res) => {
-  res.send('Bot is running');
+server.all("/", (req, res) => {
+  res.send("Bot is running!");
 });
 
-app.listen(port, () => {
-  console.log(`Server is listening on port ${port}`);
-});
+function keepAlive() {
+  server.listen(3000, () => {
+    console.log("Server is ready.");
+  });
+}
+
+module.exports = keepAlive;
