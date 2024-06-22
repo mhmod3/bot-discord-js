@@ -96,7 +96,7 @@ client.on("interactionCreate", async (interaction) => {
     const quality = interaction.options.getString("quality");
 
     try {
-      await interaction.deferReply();
+      await interaction.deferReply({ ephemeral: true });
 
       const response = await axios.get(
         `https://api.myanimelist.net/v2/anime?q=${animeName}&limit=1`,
@@ -266,7 +266,7 @@ client.on("interactionCreate", async (interaction) => {
     const url = interaction.options.getString("url");
 
     try {
-      await interaction.deferReply();
+      await interaction.deferReply({ ephemeral: true });
 
       const embed = new MessageEmbed()
         .setTitle("إبلاغ عن رابط")
