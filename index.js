@@ -122,7 +122,7 @@ client.on("interactionCreate", async (interaction) => {
         const embedChannel = await client.channels.fetch(embedChannelId);
         if (embedChannel) {
           const role = guild.roles.cache.find(
-            (role) => role.name === "Bots.exe",
+            (role) => role.name === "Full Anime",
           );
           if (role) {
             await embedChannel.send({ content: `${role}`, embeds: [embed] });
