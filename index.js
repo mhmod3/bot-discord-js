@@ -169,7 +169,7 @@ client.on("interactionCreate", async (interaction) => {
 
             if (embedChannel) {
               await embedChannel.send({ files: [filePath] });
-              fs.unlinkSync(filePath);
+              fs.unlinkSync(filePath);  // حذف الملف بعد إرساله
             } else {
               await interaction.followUp(
                 "تعذر العثور على القناة المحددة لإرسال الملف.",
@@ -244,7 +244,7 @@ client.on("interactionCreate", async (interaction) => {
           };
 
           const results = await checkUrlsFromFile(filePath);
-          fs.unlinkSync(filePath);
+          fs.unlinkSync(filePath);  // حذف الملف بعد فحصه
 
           try {
             await user.send(results.join("\n"));
