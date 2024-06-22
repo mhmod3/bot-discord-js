@@ -20,6 +20,9 @@ const embedChannelId = "1252263507601260574";
 const reportChannelId = "1253778377446395924";
 const allowedUserId = "900269769536733205";
 
+// أضف معرف الرتبة هنا
+const roleId = "1252964117292253225"; // ضع هنا معرف الرتبة التي تريد الإشارة إليها
+
 const apiKey = "98f7b234cab96ae1f7fd7c31ab3aa3eb";
 const headers = { "X-MAL-CLIENT-ID": apiKey };
 
@@ -115,9 +118,7 @@ client.on("interactionCreate", async (interaction) => {
 
         const embedChannel = await client.channels.fetch(embedChannelId);
         if (embedChannel) {
-          const role = guild.roles.cache.find(
-            (role) => role.name === "Bots.exe",
-          );
+          const role = guild.roles.cache.get(roleId);
           if (role) {
             await embedChannel.send({ content: `${role}`, embeds: [embed] });
             await interaction.editReply("تم إرسال معلومات الأنمي بنجاح.");
