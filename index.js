@@ -42,6 +42,17 @@ client.once("ready", async () => {
             description: "اسم الأنمي",
             required: true,
           },
+          {
+            name: "quality",
+            type: "STRING",
+            description: "جودة الأنمي",
+            required: true,
+            choices: [
+              { name: "480p", value: "480p" },
+              { name: "720p", value: "720p" },
+              { name: "1080p", value: "1080p" },
+            ],
+          },
         ],
       },
       {
@@ -81,6 +92,7 @@ client.on("interactionCreate", async (interaction) => {
     user.id === allowedUserId
   ) {
     const animeName = interaction.options.getString("name");
+    const quality = interaction.options.getString("quality");
 
     try {
       await interaction.deferReply();
@@ -110,11 +122,10 @@ client.on("interactionCreate", async (interaction) => {
           .setDescription(translatedSynopsis.text)
           .setColor(0x00ff00)
           .setImage(details.main_picture.large)
-          .addFields({
-            name: "عدد الحلقات",
-            value: details.num_episodes.toString(),
-            inline: false,
-          });
+          .addFields(
+            { name: "عدد الحلقات", value: details.num_episodes.toString(), inline: false },
+            { name: "الجودة", value: quality, inline: false }
+          );
 
         const embedChannel = await client.channels.fetch(embedChannelId);
         if (embedChannel) {
