@@ -1,6 +1,6 @@
 const { exec } = require("child_process");
 const fs = require("fs");
-require('./keep_alive');
+const keepAlive = require("./keep_alive");
 
 //
 // باقي الكود يبدأ هنا بعد تثبيت المكتبات
