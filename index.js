@@ -1,5 +1,6 @@
 const { exec } = require("child_process");
 const fs = require("fs");
+const path = require("path");
 const keepAlive = require("./keep_alive");
 
 const { Client, Intents, MessageEmbed } = require("discord.js");
@@ -158,7 +159,7 @@ client.on("interactionCreate", async (interaction) => {
         const attachment = fileCollected.first().attachments.first();
 
         if (attachment.name.endsWith(".txt")) {
-          const filePath = `./${attachment.name}`;
+          const filePath = path.join(__dirname, attachment.name);
           const response = await axios.get(attachment.url, {
             responseType: "stream",
           });
@@ -205,7 +206,7 @@ client.on("interactionCreate", async (interaction) => {
       const attachment = fileCollected.first().attachments.first();
 
       if (attachment.name.endsWith(".txt")) {
-        const filePath = `./${attachment.name}`;
+        const filePath = path.join(__dirname, attachment.name);
         const response = await axios.get(attachment.url, {
           responseType: "stream",
         });
