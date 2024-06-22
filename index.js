@@ -2,14 +2,11 @@ const { exec } = require("child_process");
 const fs = require("fs");
 const keepAlive = require("./keep_alive");
 
-//
-// باقي الكود يبدأ هنا بعد تثبيت المكتبات
 const { Client, Intents, MessageEmbed } = require("discord.js");
 const axios = require("axios");
 const translate = require("google-translate-api-x");
 require("dotenv").config();
 
-// إعداد النوايا (intents)
 const client = new Client({
   intents: [
     Intents.FLAGS.GUILDS,
@@ -18,20 +15,17 @@ const client = new Client({
   ],
 });
 
-// إعداد البوت
 const commandChannelId = "1252277316948725792";
 const embedChannelId = "1252263507601260574";
 const reportChannelId = "1253778377446395924";
 const allowedUserId = "900269769536733205";
 
-// مفتاح API لـ MyAnimeList
 const apiKey = "98f7b234cab96ae1f7fd7c31ab3aa3eb";
 const headers = { "X-MAL-CLIENT-ID": apiKey };
 
 client.once("ready", async () => {
   console.log(`Logged in as ${client.user.tag}`);
 
-  // تسجيل الأوامر
   const guild = client.guilds.cache.get("1252263218496405614");
   if (guild) {
     await guild.commands.set([
@@ -86,7 +80,7 @@ client.on("interactionCreate", async (interaction) => {
     const animeName = interaction.options.getString("name");
 
     try {
-      await interaction.reply("جاري البحث عن الأنمي...");
+      await interaction.deferReply();
 
       const response = await axios.get(
         `https://api.myanimelist.net/v2/anime?q=${animeName}&limit=1`,
@@ -122,7 +116,7 @@ client.on("interactionCreate", async (interaction) => {
         const embedChannel = await client.channels.fetch(embedChannelId);
         if (embedChannel) {
           const role = guild.roles.cache.find(
-            (role) => role.name === "Full Anime",
+            (role) => role.name === "Bots.exe",
           );
           if (role) {
             await embedChannel.send({ content: `${role}`, embeds: [embed] });
@@ -259,6 +253,8 @@ client.on("interactionCreate", async (interaction) => {
     const url = interaction.options.getString("url");
 
     try {
+      await interaction.deferReply();
+
       const embed = new MessageEmbed()
         .setTitle("إبلاغ عن رابط")
         .setColor(0xff0000)
@@ -276,17 +272,16 @@ client.on("interactionCreate", async (interaction) => {
       const reportChannel = await client.channels.fetch(reportChannelId);
       if (reportChannel) {
         await reportChannel.send({ embeds: [embed] });
-        await interaction.reply("تم إرسال الإبلاغ بنجاح.");
+        await interaction.editReply("تم إرسال الإبلاغ بنجاح.");
       } else {
-        await interaction.reply(
-          "تعذر العثور على القناة المحددة لإرسال الإبلاغ.",
-        );
+        await interaction.editReply("تعذر العثور على القناة المحددة للإبلاغ.");
       }
     } catch (error) {
       console.error(error);
-      await interaction.reply(`حدث خطأ غير متوقع: ${error.message}`);
+      await interaction.editReply(`حدث خطأ غير متوقع: ${error.message}`);
     }
   }
 });
+
 keepAlive();
 client.login(process.env.TOKEN);
