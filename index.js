@@ -56,10 +56,6 @@ client.once("ready", async () => {
         ],
       },
       {
-        name: "chk",
-        description: "تحقق من الروابط في ملف نصي",
-      },
-      {
         name: "report",
         description: "إبلاغ عن رابط معين",
         options: [
@@ -192,79 +188,6 @@ client.on("interactionCreate", async (interaction) => {
     } catch (error) {
       console.error(error);
       await interaction.editReply(`حدث خطأ غير متوقع: ${error.message}`);
-    }
-  }
-
-  if (commandName === "chk") {
-    await interaction.reply("من فضلك أرسل الملف النصي المطلوب.");
-
-    const fileFilter = (response) =>
-      response.author.id === user.id &&
-      response.channel.id === channel.id &&
-      response.attachments.size > 0;
-
-    try {
-      const fileCollected = await channel.awaitMessages({
-        filter: fileFilter,
-        max: 1,
-        time: 60000,
-        errors: ["time"],
-      });
-      const attachment = fileCollected.first().attachments.first();
-
-      if (attachment.name.endsWith(".txt")) {
-        const filePath = `./${attachment.name}`;
-        const response = await axios.get(attachment.url, {
-          responseType: "stream",
-        });
-        response.data.pipe(fs.createWriteStream(filePath));
-        response.data.on("end", async () => {
-          await interaction.followUp(
-            "تم استلام الملف بنجاح جاري فحص الروابط الرجاء الانتظار (قد يستغرق الأمر وقتا)"
-          );
-
-          const checkUrl = async (url) => {
-            try {
-              const response = await axios.get(url, { timeout: 10000 });
-              return response.status === 404
-                ? `الرابط هذا لا يعمل: ${url}`
-                : `الرابط هذا يعمل: ${url}`;
-            } catch (error) {
-              return `حدث خطأ أثناء محاولة الوصول إلى الرابط ${url}: ${error.message}`;
-            }
-          };
-
-          const checkUrlsFromFile = async (filePath) => {
-            const results = [];
-            try {
-              const data = fs.readFileSync(filePath, "utf-8");
-              const urls = data.split("\n");
-              for (const url of urls) {
-                if (url.trim()) {
-                  results.push(await checkUrl(url.trim()));
-                }
-              }
-            } catch (error) {
-              results.push(`حدث خطأ أثناء قراءة الملف: ${error.message}`);
-            }
-            return results;
-          };
-
-          const results = await checkUrlsFromFile(filePath);
-          fs.unlinkSync(filePath);
-
-          try {
-            await user.send(results.join("\n"));
-          } catch (error) {
-            await interaction.followUp("الرجاء فتح الخاص لاستلام النتائج.");
-          }
-        });
-      } else {
-        await interaction.followUp("الملف المرسل ليس ملف نصي.");
-      }
-    } catch (error) {
-      console.error(error);
-      await interaction.followUp(`حدث خطأ غير متوقع: ${error.message}`);
     }
   }
 
