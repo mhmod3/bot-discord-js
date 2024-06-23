@@ -48,9 +48,9 @@ client.once("ready", async () => {
             description: "الجودة",
             required: false,
             choices: [
-              { name: "Low", value: "Low" },
-              { name: "Medium", value: "Medium" },
-              { name: "High", value: "High" },
+              { name: "1080p", value: "1080p" },
+              { name: "720p", value: "720p" },
+              { name: "480p", value: "480p" },
             ],
           },
         ],
@@ -92,10 +92,10 @@ client.on("interactionCreate", async (interaction) => {
     user.id === allowedUserId
   ) {
     const animeName = interaction.options.getString("name");
-    const quality = interaction.options.getString("quality") || "Unknown";
+    const quality = interaction.options.getString("quality") || "غير محددة";
 
     try {
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply();
 
       const response = await axios.get(
         `https://api.myanimelist.net/v2/anime?q=${animeName}&limit=1`,
@@ -140,12 +140,12 @@ client.on("interactionCreate", async (interaction) => {
           const role = guild.roles.cache.get(roleId);
           if (role) {
             await embedChannel.send({ content: `${role}`, embeds: [embed] });
-            await interaction.followUp("تم إرسال معلومات الأنمي بنجاح.");
+            await interaction.editReply("تم إرسال معلومات الأنمي بنجاح.");
           } else {
-            await interaction.followUp("تعذر العثور على الرتبة المحددة.");
+            await interaction.editReply("تعذر العثور على الرتبة المحددة.");
           }
         } else {
-          await interaction.followUp(
+          await interaction.editReply(
             "تعذر العثور على القناة المحددة لإرسال الـ embed."
           );
         }
@@ -187,11 +187,11 @@ client.on("interactionCreate", async (interaction) => {
           await interaction.followUp("الملف المرسل ليس ملف نصي.");
         }
       } else {
-        await interaction.followUp("لم يتم العثور على الأنمي.");
+        await interaction.editReply("لم يتم العثور على الأنمي.");
       }
     } catch (error) {
       console.error(error);
-      await interaction.followUp(`حدث خطأ غير متوقع: ${error.message}`);
+      await interaction.editReply(`حدث خطأ غير متوقع: ${error.message}`);
     }
   }
 
@@ -273,7 +273,7 @@ client.on("interactionCreate", async (interaction) => {
     const url = interaction.options.getString("url");
 
     try {
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply();
 
       const embed = new MessageEmbed()
         .setTitle("إبلاغ عن رابط")
