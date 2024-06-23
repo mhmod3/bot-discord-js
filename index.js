@@ -42,6 +42,17 @@ client.once("ready", async () => {
             description: "اسم الأنمي",
             required: true,
           },
+          {
+            name: "quality",
+            type: "STRING",
+            description: "الجودة",
+            required: false,
+            choices: [
+              { name: "Low", value: "Low" },
+              { name: "Medium", value: "Medium" },
+              { name: "High", value: "High" },
+            ],
+          },
         ],
       },
       {
@@ -81,13 +92,14 @@ client.on("interactionCreate", async (interaction) => {
     user.id === allowedUserId
   ) {
     const animeName = interaction.options.getString("name");
+    const quality = interaction.options.getString("quality") || "Unknown";
 
     try {
-      await interaction.deferReply();
+      await interaction.deferReply({ ephemeral: true });
 
       const response = await axios.get(
         `https://api.myanimelist.net/v2/anime?q=${animeName}&limit=1`,
-        { headers },
+        { headers }
       );
       const data = response.data;
 
@@ -96,7 +108,7 @@ client.on("interactionCreate", async (interaction) => {
 
         const detailsResponse = await axios.get(
           `https://api.myanimelist.net/v2/anime/${animeInfo.id}?fields=id,title,main_picture,synopsis,num_episodes`,
-          { headers },
+          { headers }
         );
         const details = detailsResponse.data;
 
@@ -110,11 +122,18 @@ client.on("interactionCreate", async (interaction) => {
           .setDescription(translatedSynopsis.text)
           .setColor(0x00ff00)
           .setImage(details.main_picture.large)
-          .addFields({
-            name: "عدد الحلقات",
-            value: details.num_episodes.toString(),
-            inline: false,
-          });
+          .addFields(
+            {
+              name: "عدد الحلقات",
+              value: details.num_episodes.toString(),
+              inline: false,
+            },
+            {
+              name: "الجودة",
+              value: quality,
+              inline: false,
+            }
+          );
 
         const embedChannel = await client.channels.fetch(embedChannelId);
         if (embedChannel) {
@@ -127,7 +146,7 @@ client.on("interactionCreate", async (interaction) => {
           }
         } else {
           await interaction.editReply(
-            "تعذر العثور على القناة المحددة لإرسال الـ embed.",
+            "تعذر العثور على القناة المحددة لإرسال الـ embed."
           );
         }
 
@@ -160,7 +179,7 @@ client.on("interactionCreate", async (interaction) => {
               fs.unlinkSync(filePath);
             } else {
               await interaction.followUp(
-                "تعذر العثور على القناة المحددة لإرسال الملف.",
+                "تعذر العثور على القناة المحددة لإرسال الملف."
               );
             }
           });
@@ -201,7 +220,7 @@ client.on("interactionCreate", async (interaction) => {
         response.data.pipe(fs.createWriteStream(filePath));
         response.data.on("end", async () => {
           await interaction.followUp(
-            "تم استلام الملف بنجاح جاري فحص الروابط الرجاء الانتظار (قد يستغرق الأمر وقتا)",
+            "تم استلام الملف بنجاح جاري فحص الروابط الرجاء الانتظار (قد يستغرق الأمر وقتا)"
           );
 
           const checkUrl = async (url) => {
@@ -254,7 +273,7 @@ client.on("interactionCreate", async (interaction) => {
     const url = interaction.options.getString("url");
 
     try {
-      await interaction.deferReply();
+      await interaction.deferReply({ ephemeral: true });
 
       const embed = new MessageEmbed()
         .setTitle("إبلاغ عن رابط")
@@ -267,7 +286,7 @@ client.on("interactionCreate", async (interaction) => {
             name: "التاريخ",
             value: new Date().toLocaleString("ar-EG"),
             inline: false,
-          },
+          }
         );
 
       const reportChannel = await client.channels.fetch(reportChannelId);
