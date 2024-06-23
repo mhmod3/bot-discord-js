@@ -46,11 +46,11 @@ client.once("ready", async () => {
             name: "quality",
             type: "STRING",
             description: "الجودة",
-            required: true,
+            required: false,
             choices: [
-              { name: "480p", value: "480p" },
-              { name: "720p", value: "720p" },
-              { name: "1080p", value: "1080p" },
+              { name: "Low", value: "Low" },
+              { name: "Medium", value: "Medium" },
+              { name: "High", value: "High" },
             ],
           },
         ],
@@ -140,12 +140,12 @@ client.on("interactionCreate", async (interaction) => {
           const role = guild.roles.cache.get(roleId);
           if (role) {
             await embedChannel.send({ content: `${role}`, embeds: [embed] });
-            await interaction.editReply("تم إرسال معلومات الأنمي بنجاح.");
+            await interaction.followUp("تم إرسال معلومات الأنمي بنجاح.");
           } else {
-            await interaction.editReply("تعذر العثور على الرتبة المحددة.");
+            await interaction.followUp("تعذر العثور على الرتبة المحددة.");
           }
         } else {
-          await interaction.editReply(
+          await interaction.followUp(
             "تعذر العثور على القناة المحددة لإرسال الـ embed."
           );
         }
@@ -187,11 +187,11 @@ client.on("interactionCreate", async (interaction) => {
           await interaction.followUp("الملف المرسل ليس ملف نصي.");
         }
       } else {
-        await interaction.editReply("لم يتم العثور على الأنمي.");
+        await interaction.followUp("لم يتم العثور على الأنمي.");
       }
     } catch (error) {
       console.error(error);
-      await interaction.editReply(`حدث خطأ غير متوقع: ${error.message}`);
+      await interaction.followUp(`حدث خطأ غير متوقع: ${error.message}`);
     }
   }
 
@@ -292,13 +292,13 @@ client.on("interactionCreate", async (interaction) => {
       const reportChannel = await client.channels.fetch(reportChannelId);
       if (reportChannel) {
         await reportChannel.send({ embeds: [embed] });
-        await interaction.editReply("تم إرسال الإبلاغ بنجاح.");
+        await interaction.followUp("تم إرسال الإبلاغ بنجاح.");
       } else {
-        await interaction.editReply("تعذر العثور على القناة المحددة للإبلاغ.");
+        await interaction.followUp("تعذر العثور على القناة المحددة للإبلاغ.");
       }
     } catch (error) {
       console.error(error);
-      await interaction.editReply(`حدث خطأ غير متوقع: ${error.message}`);
+      await interaction.followUp(`حدث خطأ غير متوقع: ${error.message}`);
     }
   }
 });
