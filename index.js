@@ -31,10 +31,13 @@ bot.on('text', async (ctx) => {
 
   const animeName = input.slice(0, -1).join(' ');
   const episodeNumber = input[input.length - 1];
-  const formattedAnimeName = encodeURIComponent(animeName.replace(/\s+/g, '-'));
-  const encodedEpisodeNumber = encodeURIComponent(episodeNumber);
+
+  // تشفير كل جزء من الرابط بشكل منفصل
+  const formattedAnimeNameEncoded = encodeURIComponent(animeName.replace(/\s+/g, '-'));
+  const episodeNumberEncoded = encodeURIComponent(episodeNumber);
   
-  const url = `https://witanime.cyou/episode/${formattedAnimeName}-الحلقة-${encodedEpisodeNumber}`;
+  // بناء الرابط بشكل كامل مع استخدام الأحرف المشفرة
+  const url = `https://witanime.cyou/episode/${formattedAnimeNameEncoded}-الحلقة-${episodeNumberEncoded}`;
 
   try {
     const response = await axios.get(url);
