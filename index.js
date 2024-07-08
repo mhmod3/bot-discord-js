@@ -11,8 +11,13 @@ let nanoid;
   const nanoidModule = await import('nanoid');
   nanoid = nanoidModule.nanoid;
 })();
-TOKEN = process.env['TOKEN'];
-const bot = new Telegraf('TOKEN');
+
+const TOKEN = process.env['TOKEN'];
+if (!TOKEN) {
+  throw new Error('TOKEN is not defined in the environment variables');
+}
+
+const bot = new Telegraf(TOKEN);
 
 bot.start((ctx) => {
   ctx.reply('Welcome! Please enter the name of the anime series:');
