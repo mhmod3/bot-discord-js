@@ -2,62 +2,46 @@ const { Telegraf } = require('telegraf');
 const axios = require('axios');
 const cheerio = require('cheerio');
 const fs = require('fs');
-const { nanoid } = require('nanoid');
+const path = require('path');
+const express = require('express');
 
-// استبدل 'YOUR_BOT_TOKEN' برمز الوصول الخاص ببوتك
+// استخدم الاستيراد الديناميكي
+let nanoid;
+(async () => {
+  const nanoidModule = await import('nanoid');
+  nanoid = nanoidModule.nanoid;
+})();
 TOKEN = process.env['TOKEN'];
 const bot = new Telegraf('TOKEN');
 
-// معرف المجموعة التي ستتلقى التقارير
-const REPORT_GROUP_ID = '-10023145567';
-
-bot.start(async (ctx) => {
-  await ctx.reply('أدخل اسم الأنمي:');
+bot.start((ctx) => {
+  ctx.reply('Welcome! Please enter the name of the anime series:');
   bot.on('text', async (ctx) => {
     const animeName = ctx.message.text;
-    await ctx.reply('أدخل رقم الحلقة:');
-    
-    bot.once('text', async (ctx) => {
+    ctx.reply('Please enter the episode number:');
+    bot.on('text', async (ctx) => {
       const episodeNumber = ctx.message.text;
-      const animeSlug = animeName.replace(/\s+/g, '-');
-      const url = `https://witanime.cyou/episode/${animeSlug}-${episodeNumber}/`;
-
+      const formattedAnimeName = animeName.replace(/\s+/g, '-');
+      const url = `https://example.com/${formattedAnimeName}/episode-${episodeNumber}`;
       try {
-        const response = await axios.get(url, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0',
-          },
-        });
-
-        if (response.status === 200) {
-          const $ = cheerio.load(response.data);
-          $('title').text('Anime');
-          const modifiedHtml = $.html();
-          const filename = `${nanoid()}.html`;
-
-          fs.writeFileSync(filename, modifiedHtml);
-
-          await ctx.replyWithDocument({ source: filename, filename }, { caption: 'الصفحة المعدلة لأنميك' });
-          fs.unlinkSync(filename);
-        } else {
-          await ctx.reply('لم يتم العثور على الصفحة المطلوبة.');
-        }
+        const response = await axios.get(url);
+        const $ = cheerio.load(response.data);
+        $('title').text('Anime');
+        const randomFileName = nanoid(10) + '.html';
+        const filePath = path.join(__dirname, randomFileName);
+        fs.writeFileSync(filePath, $.html());
+        await ctx.replyWithDocument({ source: filePath, caption: 'Here is your anime episode' });
+        fs.unlinkSync(filePath);
       } catch (error) {
-        await ctx.reply('حدث خطأ أثناء تحميل الصفحة.');
         console.error(error);
+        ctx.reply('Failed to fetch the episode.');
       }
     });
   });
 });
 
-bot.command('report', async (ctx) => {
-  await ctx.reply('الرجاء وصف المشكلة التي تواجهها:');
-  bot.once('text', async (ctx) => {
-    const reportMessage = ctx.message.text;
-    await bot.telegram.sendMessage(REPORT_GROUP_ID, `تقرير من ${ctx.from.username}:\n${reportMessage}`);
-    await ctx.reply('تم إرسال تقريرك بنجاح.');
-  });
-});
+const app = express();
+app.get('/', (req, res) => res.send('Bot is running'));
+app.listen(3000, () => console.log('Server is running on port 3000'));
 
 bot.launch();
-console.log('Bot is running...');
