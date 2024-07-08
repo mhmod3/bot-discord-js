@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const express = require('express');
 
-// استيراد nanoid ديناميكياً
+// استخدم الاستيراد الديناميكي
 let nanoid;
 (async () => {
   const nanoidModule = await import('nanoid');
