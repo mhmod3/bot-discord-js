@@ -2,7 +2,7 @@ const axios = require('axios');
 const express = require('express');
 const cheerio = require('cheerio');
 const fs = require('fs');
-const { Telegraf, Markup } = require('telegraf');
+const { Telegraf } = require('telegraf');
 const { v4: uuidv4 } = require('uuid');
 const app = express();
 const TOKEN = process.env['TOKEN'];
@@ -59,7 +59,7 @@ bot.on('text', async ctx => {
             $('title').text('Anime'); // Change page title to "Anime"
             $('link[rel="icon"]').remove(); // Remove page favicon
 
-            $('center').remove(); 
+            $('center').remove();
             $('h3:contains("وصف الحلقة")').remove();
             $('center a[href*="anitaku"]').closest('center').remove();
             $('a[data-url]').filter((i, el) => $(el).text().toLowerCase().includes('yonaplay')).remove();
@@ -103,5 +103,13 @@ bot.on('text', async ctx => {
     }
 });
 
+// Setup Webhook
+const PORT = process.env.PORT || 3000;
+const WEBHOOK_URL = `https://${process.env.RENDER_EXTERNAL_HOSTNAME}/bot${TOKEN}`;
+app.use(bot.webhookCallback(`/bot${TOKEN}`));
+bot.telegram.setWebhook(WEBHOOK_URL);
+
 keepAlive();
-bot.launch();
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
