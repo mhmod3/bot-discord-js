@@ -9,7 +9,7 @@
     "express": "^4.17.2",
     "telegraf": "^4.8.3",
     "uuid": "^8.3.2",
-    "nanoid": "^4.0.0" // تمت إضافة مكتبة nanoid هنا
+    "nanoid": "^4.0.0"
   },
   "scripts": {
     "start": "node index.js"
