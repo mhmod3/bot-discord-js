@@ -15,7 +15,7 @@ bot.command('start', ctx => {
 });
 
 // Handle /report command
-bot.command('report', async ctx => {
+bot.command('m72321gf', async ctx => {
     ctx.reply('ماذا ترغب في الإبلاغ عنه؟');
     bot.on('text', async ctx => {
         const reportText = ctx.message.text;
@@ -51,8 +51,6 @@ bot.on('text', async ctx => {
     const encodedEpisodeNumber = encodeURIComponent(`الحلقة-${episodeNumber}`);
     const url = `https://witanime.cyou/episode/${encodedAnimeName}-${encodedEpisodeNumber}/`;
 
-    // Send the encoded URL to the user
-    ctx.reply(`الرابط المشفر: ${url}`);
 
     try {
         const response = await axios.get(url, {
@@ -111,13 +109,5 @@ bot.on('text', async ctx => {
     }
 });
 
-// Setup Webhook
-const PORT = process.env.PORT || 3000;
-const WEBHOOK_URL = `https://${process.env.RENDER_EXTERNAL_HOSTNAME}/bot${TOKEN}`;
-app.use(bot.webhookCallback(`/bot${TOKEN}`));
-bot.telegram.setWebhook(WEBHOOK_URL);
-
 keepAlive();
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
+bot.launch();
