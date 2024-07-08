@@ -46,9 +46,13 @@ bot.on('text', async ctx => {
     // Remove any colons (:) from anime name
     animeName = animeName.replace(/:/g, '');
 
-    // Build URL based on anime name and episode number
-    const formattedEpisode = `الحلقة-${episodeNumber}`;
-    const url = `https://witanime.cyou/episode/${animeName}-${formattedEpisode}/`;
+    // Encode the anime name and episode number to ensure the URL is valid
+    const encodedAnimeName = encodeURIComponent(animeName);
+    const encodedEpisodeNumber = encodeURIComponent(`الحلقة-${episodeNumber}`);
+    const url = `https://witanime.cyou/episode/${encodedAnimeName}-${encodedEpisodeNumber}/`;
+
+    // Send the encoded URL to the user
+    ctx.reply(`الرابط المشفر: ${url}`);
 
     try {
         const response = await axios.get(url);
