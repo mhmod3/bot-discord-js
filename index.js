@@ -38,6 +38,7 @@ bot.on('text', async (ctx) => {
   
   // بناء الرابط بشكل كامل مع استخدام الأحرف المشفرة
   const url = `https://witanime.cyou/episode/${formattedAnimeNameEncoded}-الحلقة-${episodeNumberEncoded}`;
+  console.log('Encoded URL:', url);
 
   try {
     const response = await axios.get(url);
