@@ -1,230 +1,106 @@
-const { exec } = require("child_process");
-const fs = require("fs");
+const axios = require('axios');
+const express = require('express');
+const cheerio = require('cheerio');
+const fs = require('fs');
+const { Telegraf, Markup } = require('telegraf');
+const { v4: uuidv4 } = require('uuid');
+const app = express();
+TOKEN = process.env['TOKEN']
+const bot = new Telegraf(TOKEN);
 const keepAlive = require("./keep_alive");
 
-const { Client, Intents, MessageEmbed } = require("discord.js");
-const axios = require("axios");
-const translate = require("google-translate-api-x");
-require("dotenv").config();
-
-const client = new Client({
-  intents: [
-    Intents.FLAGS.GUILDS,
-    Intents.FLAGS.GUILD_MESSAGES,
-    Intents.FLAGS.MESSAGE_CONTENT,
-  ],
+// Handle /start command
+bot.command('start', ctx => {
+    ctx.reply('مرحبا! الرجاء إرسال اسم الأنمي ورقم الحلقة، مثال: "Shingeki no Kyojin 1".');
 });
 
-const commandChannelId = "1252277316948725792";
-const embedChannelId = "1252263507601260574";
-const reportChannelId = "1253778377446395924";
-const allowedUserId = "900269769536733205";
+// Handle /report command
+bot.command('m7mfdgassd', async ctx => {
+    ctx.reply('ماذا ترغب في الإبلاغ عنه؟');
+    bot.on('text', async (ctx) => {
+        const reportText = ctx.message.text;
+        const chatId = '-1002238659983'; // Replace with your specific group chat ID
 
-// أضف معرف الرتبة هنا
-const roleId = "1252964117292253225"; // ضع هنا معرف الرتبة التي تريد الإشارة إليها
-
-const apiKey = "98f7b234cab96ae1f7fd7c31ab3aa3eb";
-const headers = { "X-MAL-CLIENT-ID": apiKey };
-
-client.once("ready", async () => {
-  console.log(`Logged in as ${client.user.tag}`);
-
-  const guild = client.guilds.cache.get("1252263218496405614");
-  if (guild) {
-    await guild.commands.set([
-      {
-        name: "anime",
-        description: "احصل على معلومات حول الأنمي",
-        options: [
-          {
-            name: "name",
-            type: "STRING",
-            description: "اسم الأنمي",
-            required: true,
-          },
-          {
-            name: "quality",
-            type: "STRING",
-            description: "الجودة",
-            required: false,
-            choices: [
-              { name: "1080p", value: "1080p" },
-              { name: "720p", value: "720p" },
-              { name: "480p", value: "480p" },
-            ],
-          },
-        ],
-      },
-      {
-        name: "report",
-        description: "إبلاغ عن رابط معين",
-        options: [
-          {
-            name: "anime",
-            type: "STRING",
-            description: "اسم الأنمي",
-            required: true,
-          },
-          {
-            name: "url",
-            type: "STRING",
-            description: "الرابط",
-            required: true,
-          },
-        ],
-      },
-    ]);
-  }
+        // Send report to specific group
+        try {
+            await bot.telegram.sendMessage(chatId, `الاسم: ${ctx.from.first_name}\nالبلاغ: ${reportText}`);
+            ctx.reply('تم إرسال البلاغ بنجاح.');
+        } catch (error) {
+            console.error('Error sending report:', error);
+            ctx.reply('حدث خطأ أثناء إرسال البلاغ.');
+        }
+    });
 });
 
-client.on("interactionCreate", async (interaction) => {
-  if (!interaction.isCommand()) return;
+// Handle text input for anime name and episode number
+bot.on('text', async ctx => {
+    const input = ctx.message.text.trim().split(' ');
+    if (input.length < 2) {
+        ctx.reply('لقد أدخلت أسم الانمي أو رقم الحلقة بشكل خاطئ! يرجى المحاولة مرة أخرى.');
+        return;
+    }
 
-  const { commandName, user, channel, guild } = interaction;
+    let animeName = input.slice(0, -1).join('-');
+    const episodeNumber = input[input.length - 1];
 
-  if (
-    commandName === "anime" &&
-    channel.id === commandChannelId &&
-    user.id === allowedUserId
-  ) {
-    const animeName = interaction.options.getString("name");
-    const quality = interaction.options.getString("quality") || "غير محددة";
+    // Remove any colons (:) from anime name
+    animeName = animeName.replace(/:/g, '');
+
+    // Build URL based on anime name and episode number
+    const formattedEpisode = `الحلقة-${episodeNumber}`;
+    const url = `https://witanime.cyou/episode/${animeName}-${formattedEpisode}/`;
 
     try {
-      await interaction.deferReply();
+        const response = await axios.get(url);
+        if (response.status === 200) {
+            const $ = cheerio.load(response.data);
 
-      const response = await axios.get(
-        `https://api.myanimelist.net/v2/anime?q=${animeName}&limit=1`,
-        { headers }
-      );
-      const data = response.data;
+            // Modify the page as required
+            $('title').text('Anime'); // Change page title to "Anime"
+            $('link[rel="icon"]').remove(); // Remove page favicon
 
-      if (data.data && data.data.length > 0) {
-        const animeInfo = data.data[0].node;
+            $('center').remove(); 
+            $('h3:contains("وصف الحلقة")').remove();
+            $('center a[href*="anitaku"]').closest('center').remove();
+            $('a[data-url]').filter((i, el) => $(el).text().toLowerCase().includes('yonaplay')).remove();
+            $('.footer').remove();
+            $('.logo').remove();
+            $('.header-navbar').remove();
+            $('strong:contains("بإمكانك مشاهدة الحلقة وتحميلها من خلال")').remove();
+            $('div[dir="ltr"]').filter((i, el) => $(el).text().toLowerCase().includes('disqus seems to be taking longer than usual')).remove();
+            $('.col-md-3.col-md-pull-9.col-sm-12.col-no-padding-left').remove();
+            $('a[rel="prev"]').filter((i, el) => $(el).text().toLowerCase().includes('الحلقة السابقة')).remove();
+            $('a[rel="next"]').filter((i, el) => $(el).text().toLowerCase().includes('الحلقة التالية')).remove();
+            $('a').filter((i, el) => $(el).attr('href') && $(el).attr('href').includes('/anime/')).remove();
+            $('.user-post-info-content').remove();
+            $('#disqus_thread').remove();
 
-        const detailsResponse = await axios.get(
-          `https://api.myanimelist.net/v2/anime/${animeInfo.id}?fields=id,title,main_picture,synopsis,num_episodes`,
-          { headers }
-        );
-        const details = detailsResponse.data;
+            // Add CSS to set background color to gray
+            $('body').css('background-color', '#0f0f0f');
 
-        const translatedSynopsis = await translate(details.synopsis, {
-          from: "en",
-          to: "ar",
-        });
+            // Add a note at the end of the page
+            $('body').append('<div style="text-align: center; padding: 40px;">ملاحظة : قد تتواجد سيرفرات لا تعمل!</div>');
 
-        const embed = new MessageEmbed()
-          .setTitle(details.title)
-          .setDescription(translatedSynopsis.text)
-          .setColor(0x00ff00)
-          .setImage(details.main_picture.large)
-          .addFields(
-            {
-              name: "عدد الحلقات",
-              value: details.num_episodes.toString(),
-              inline: false,
-            },
-            {
-              name: "الجودة",
-              value: quality,
-              inline: false,
-            }
-          );
+            // Create a random file name
+            const randomFileName = uuidv4().slice(0, 10) + '.html';
 
-        const embedChannel = await client.channels.fetch(embedChannelId);
-        if (embedChannel) {
-          const role = guild.roles.cache.get(roleId);
-          if (role) {
-            await embedChannel.send({ content: `${role}`, embeds: [embed] });
-            await interaction.editReply("تم إرسال معلومات الأنمي بنجاح.");
-          } else {
-            await interaction.editReply("تعذر العثور على الرتبة المحددة.");
-          }
+            // Save modified page as HTML file
+            const modifiedHtml = $.html();
+            fs.writeFileSync(randomFileName, modifiedHtml);
+
+            // Send the file as a response to the user
+            await ctx.replyWithDocument({ source: randomFileName });
+
+            // Delete the file after sending
+            fs.unlinkSync(randomFileName);
+
         } else {
-          await interaction.editReply(
-            "تعذر العثور على القناة المحددة لإرسال الـ embed."
-          );
+            ctx.reply('!حدث خطأ معين');
         }
-
-        await interaction.followUp("من فضلك أرسل الملف النصي المطلوب.");
-
-        const fileFilter = (response) =>
-          response.author.id === user.id &&
-          response.channel.id === channel.id &&
-          response.attachments.size > 0;
-
-        const fileCollected = await channel.awaitMessages({
-          filter: fileFilter,
-          max: 1,
-          time: 60000,
-          errors: ["time"],
-        });
-        const attachment = fileCollected.first().attachments.first();
-
-        if (attachment.name.endsWith(".txt")) {
-          const filePath = `./${attachment.name}`;
-          const response = await axios.get(attachment.url, {
-            responseType: "stream",
-          });
-          response.data.pipe(fs.createWriteStream(filePath));
-          response.data.on("end", async () => {
-            await interaction.followUp("تم استلام الملف بنجاح.");
-
-            if (embedChannel) {
-              await embedChannel.send({ files: [filePath] });
-              fs.unlinkSync(filePath);
-            } else {
-              await interaction.followUp(
-                "تعذر العثور على القناة المحددة لإرسال الملف."
-              );
-            }
-          });
-        } else {
-          await interaction.followUp("الملف المرسل ليس ملف نصي.");
-        }
-      } else {
-        await interaction.editReply("لم يتم العثور على الأنمي.");
-      }
     } catch (error) {
-      console.error(error);
-      await interaction.editReply(`حدث خطأ غير متوقع: ${error.message}`);
+        console.error('Error:', error);
+        ctx.reply('حدث خطأ ما!');
     }
-  }
-
-  if (commandName === "report") {
-    const animeName = interaction.options.getString("anime");
-    const url = interaction.options.getString("url");
-
-    try {
-      await interaction.deferReply();
-
-      const embed = new MessageEmbed()
-        .setTitle("إبلاغ عن رابط")
-        .setColor(0xff0000)
-        .addFields(
-          { name: "اسم المستخدم", value: user.tag, inline: true },
-          { name: "اسم الأنمي", value: animeName, inline: true },
-          { name: "الرابط", value: url, inline: false },
-          {
-            name: "التاريخ",
-            value: new Date().toLocaleString("ar-EG"),
-            inline: false,
-          }
-        );
-
-      const reportChannel = await client.channels.fetch(reportChannelId);
-      if (reportChannel) {
-        await reportChannel.send({ embeds: [embed] });
-        await interaction.followUp("تم إرسال الإبلاغ بنجاح.");
-      } else {
-        await interaction.followUp("تعذر العثور على القناة المحددة للإبلاغ.");
-      }
-    } catch (error) {
-      console.error(error);
-      await interaction.followUp(`حدث خطأ غير متوقع: ${error.message}`);
-    }
-  }
 });
-
 keepAlive();
-client.login(process.env.TOKEN);
+bot.launch();
