@@ -5,7 +5,7 @@ const fs = require('fs');
 const { Telegraf, Markup } = require('telegraf');
 const { v4: uuidv4 } = require('uuid');
 const app = express();
-TOKEN = process.env['TOKEN']
+TOKEN = process.env['TOKEN'];
 const bot = new Telegraf(TOKEN);
 const keepAlive = require("./keep_alive");
 
@@ -48,7 +48,7 @@ bot.on('text', async ctx => {
 
     // Build URL based on anime name and episode number
     const formattedEpisode = `الحلقة-${episodeNumber}`;
-    const url = `https://witanime.cyou/episode/${animeName}-${formattedEpisode}/`;
+    const url = encodeURI(`https://witanime.cyou/episode/${animeName}-${formattedEpisode}/`);
 
     try {
         const response = await axios.get(url);
@@ -102,5 +102,6 @@ bot.on('text', async ctx => {
         ctx.reply('حدث خطأ ما!');
     }
 });
+
 keepAlive();
 bot.launch();
