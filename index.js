@@ -20,28 +20,29 @@ if (!TOKEN) {
 const bot = new Telegraf(TOKEN);
 
 bot.start((ctx) => {
-  ctx.reply('Welcome! Please enter the name of the anime series:');
+  ctx.reply('Welcome! Please enter the name of the anime series and episode number. For example: "Naruto 5"');
   bot.on('text', async (ctx) => {
-    const animeName = ctx.message.text;
-    ctx.reply('Please enter the episode number:');
-    bot.on('text', async (ctx) => {
-      const episodeNumber = ctx.message.text;
-      const formattedAnimeName = animeName.replace(/\s+/g, '-');
-      const url = `https://example.com/${formattedAnimeName}/episode-${episodeNumber}`;
-      try {
-        const response = await axios.get(url);
-        const $ = cheerio.load(response.data);
-        $('title').text('Anime');
-        const randomFileName = nanoid(10) + '.html';
-        const filePath = path.join(__dirname, randomFileName);
-        fs.writeFileSync(filePath, $.html());
-        await ctx.replyWithDocument({ source: filePath, caption: 'Here is your anime episode' });
-        fs.unlinkSync(filePath);
-      } catch (error) {
-        console.error(error);
-        ctx.reply('Failed to fetch the episode.');
-      }
-    });
+    const input = ctx.message.text.split(' ');
+    if (input.length < 2) {
+      return ctx.reply('Please enter both the anime name and the episode number. For example: "Naruto 5"');
+    }
+    const animeName = input.slice(0, -1).join(' ');
+    const episodeNumber = input[input.length - 1];
+    const formattedAnimeName = animeName.replace(/\s+/g, '-');
+    const url = `https://example.com/${formattedAnimeName}/episode-${episodeNumber}`;
+    try {
+      const response = await axios.get(url);
+      const $ = cheerio.load(response.data);
+      $('title').text('Anime');
+      const randomFileName = nanoid(10) + '.html';
+      const filePath = path.join(__dirname, randomFileName);
+      fs.writeFileSync(filePath, $.html());
+      await ctx.replyWithDocument({ source: filePath, caption: 'Here is your anime episode' });
+      fs.unlinkSync(filePath);
+    } catch (error) {
+      console.error(error);
+      ctx.reply('Failed to fetch the episode.');
+    }
   });
 });
 
