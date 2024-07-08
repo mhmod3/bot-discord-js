@@ -29,7 +29,7 @@ bot.start((ctx) => {
     const animeName = input.slice(0, -1).join(' ');
     const episodeNumber = input[input.length - 1];
     const formattedAnimeName = animeName.replace(/\s+/g, '-');
-    const url = `https://example.com/${formattedAnimeName}/episode-${episodeNumber}`;
+    const url = `https://witanime.cyou/episode/${formattedAnimeName}-الحلقة-${episodeNumber}`;
     try {
       const response = await axios.get(url);
       const $ = cheerio.load(response.data);
