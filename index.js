@@ -1,107 +1,63 @@
+const { Telegraf } = require('telegraf');
 const axios = require('axios');
-const express = require('express');
 const cheerio = require('cheerio');
 const fs = require('fs');
-const { Telegraf, Markup } = require('telegraf');
-const { v4: uuidv4 } = require('uuid');
-const app = express();
+const { nanoid } = require('nanoid');
+
+// استبدل 'YOUR_BOT_TOKEN' برمز الوصول الخاص ببوتك
 TOKEN = process.env['TOKEN'];
-const bot = new Telegraf(TOKEN);
-const keepAlive = require("./keep_alive");
+const bot = new Telegraf('TOKEN');
 
-// Handle /start command
-bot.command('start', ctx => {
-    ctx.reply('مرحبا! الرجاء إرسال اسم الأنمي ورقم الحلقة، مثال: "Shingeki no Kyojin 1".');
-});
+// معرف المجموعة التي ستتلقى التقارير
+const REPORT_GROUP_ID = '-10023145567';
 
-// Handle /report command
-bot.command('m7mfdgassd', async ctx => {
-    ctx.reply('ماذا ترغب في الإبلاغ عنه؟');
-    bot.on('text', async (ctx) => {
-        const reportText = ctx.message.text;
-        const chatId = '-1002238659983'; // Replace with your specific group chat ID
+bot.start(async (ctx) => {
+  await ctx.reply('أدخل اسم الأنمي:');
+  bot.on('text', async (ctx) => {
+    const animeName = ctx.message.text;
+    await ctx.reply('أدخل رقم الحلقة:');
+    
+    bot.once('text', async (ctx) => {
+      const episodeNumber = ctx.message.text;
+      const animeSlug = animeName.replace(/\s+/g, '-');
+      const url = `https://witanime.cyou/episode/${animeSlug}-${episodeNumber}/`;
 
-        // Send report to specific group
-        try {
-            await bot.telegram.sendMessage(chatId, `الاسم: ${ctx.from.first_name}\nالبلاغ: ${reportText}`);
-            ctx.reply('تم إرسال البلاغ بنجاح.');
-        } catch (error) {
-            console.error('Error sending report:', error);
-            ctx.reply('حدث خطأ أثناء إرسال البلاغ.');
-        }
-    });
-});
+      try {
+        const response = await axios.get(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0',
+          },
+        });
 
-// Handle text input for anime name and episode number
-bot.on('text', async ctx => {
-    const input = ctx.message.text.trim().split(' ');
-    if (input.length < 2) {
-        ctx.reply('لقد أدخلت أسم الانمي أو رقم الحلقة بشكل خاطئ! يرجى المحاولة مرة أخرى.');
-        return;
-    }
-
-    let animeName = input.slice(0, -1).join('-');
-    const episodeNumber = input[input.length - 1];
-
-    // Remove any colons (:) from anime name
-    animeName = animeName.replace(/:/g, '');
-
-    // Build URL based on anime name and episode number
-    const formattedEpisode = `الحلقة-${episodeNumber}`;
-    const url = encodeURI(`https://witanime.cyou/episode/${animeName}-${formattedEpisode}/`);
-
-    try {
-        const response = await axios.get(url);
         if (response.status === 200) {
-            const $ = cheerio.load(response.data);
+          const $ = cheerio.load(response.data);
+          $('title').text('Anime');
+          const modifiedHtml = $.html();
+          const filename = `${nanoid()}.html`;
 
-            // Modify the page as required
-            $('title').text('Anime'); // Change page title to "Anime"
-            $('link[rel="icon"]').remove(); // Remove page favicon
+          fs.writeFileSync(filename, modifiedHtml);
 
-            $('center').remove(); 
-            $('h3:contains("وصف الحلقة")').remove();
-            $('center a[href*="anitaku"]').closest('center').remove();
-            $('a[data-url]').filter((i, el) => $(el).text().toLowerCase().includes('yonaplay')).remove();
-            $('.footer').remove();
-            $('.logo').remove();
-            $('.header-navbar').remove();
-            $('strong:contains("بإمكانك مشاهدة الحلقة وتحميلها من خلال")').remove();
-            $('div[dir="ltr"]').filter((i, el) => $(el).text().toLowerCase().includes('disqus seems to be taking longer than usual')).remove();
-            $('.col-md-3.col-md-pull-9.col-sm-12.col-no-padding-left').remove();
-            $('a[rel="prev"]').filter((i, el) => $(el).text().toLowerCase().includes('الحلقة السابقة')).remove();
-            $('a[rel="next"]').filter((i, el) => $(el).text().toLowerCase().includes('الحلقة التالية')).remove();
-            $('a').filter((i, el) => $(el).attr('href') && $(el).attr('href').includes('/anime/')).remove();
-            $('.user-post-info-content').remove();
-            $('#disqus_thread').remove();
-
-            // Add CSS to set background color to gray
-            $('body').css('background-color', '#0f0f0f');
-
-            // Add a note at the end of the page
-            $('body').append('<div style="text-align: center; padding: 40px;">ملاحظة : قد تتواجد سيرفرات لا تعمل!</div>');
-
-            // Create a random file name
-            const randomFileName = uuidv4().slice(0, 10) + '.html';
-
-            // Save modified page as HTML file
-            const modifiedHtml = $.html();
-            fs.writeFileSync(randomFileName, modifiedHtml);
-
-            // Send the file as a response to the user
-            await ctx.replyWithDocument({ source: randomFileName });
-
-            // Delete the file after sending
-            fs.unlinkSync(randomFileName);
-
+          await ctx.replyWithDocument({ source: filename, filename }, { caption: 'الصفحة المعدلة لأنميك' });
+          fs.unlinkSync(filename);
         } else {
-            ctx.reply('!حدث خطأ معين');
+          await ctx.reply('لم يتم العثور على الصفحة المطلوبة.');
         }
-    } catch (error) {
-        console.error('Error:', error);
-        ctx.reply('حدث خطأ ما!');
-    }
+      } catch (error) {
+        await ctx.reply('حدث خطأ أثناء تحميل الصفحة.');
+        console.error(error);
+      }
+    });
+  });
 });
 
-keepAlive();
+bot.command('report', async (ctx) => {
+  await ctx.reply('الرجاء وصف المشكلة التي تواجهها:');
+  bot.once('text', async (ctx) => {
+    const reportMessage = ctx.message.text;
+    await bot.telegram.sendMessage(REPORT_GROUP_ID, `تقرير من ${ctx.from.username}:\n${reportMessage}`);
+    await ctx.reply('تم إرسال تقريرك بنجاح.');
+  });
+});
+
 bot.launch();
+console.log('Bot is running...');
