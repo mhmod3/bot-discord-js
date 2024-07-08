@@ -32,8 +32,9 @@ bot.on('text', async (ctx) => {
   const animeName = input.slice(0, -1).join(' ');
   const episodeNumber = input[input.length - 1];
   const formattedAnimeName = encodeURIComponent(animeName.replace(/\s+/g, '-'));
-
-  const url = `https://witanime.cyou/episode/${formattedAnimeName}-الحلقة-${episodeNumber}`;
+  const encodedEpisodeNumber = encodeURIComponent(episodeNumber);
+  
+  const url = `https://witanime.cyou/episode/${formattedAnimeName}-الحلقة-${encodedEpisodeNumber}`;
 
   try {
     const response = await axios.get(url);
