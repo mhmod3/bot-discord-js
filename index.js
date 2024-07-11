@@ -2,7 +2,7 @@ const axios = require('axios');
 const express = require('express');
 const cheerio = require('cheerio');
 const fs = require('fs');
-const { Telegraf } = require('telegraf');
+const { Telegraf, Markup } = require('telegraf');
 const { v4: uuidv4 } = require('uuid');
 const app = express();
 const TOKEN = process.env['TOKEN'];
@@ -13,7 +13,6 @@ const keepAlive = require('./keep_alive');
 bot.command('start', ctx => {
     ctx.reply('مرحبا! الرجاء إرسال اسم الأنمي ورقم الحلقة، مثال: "Shingeki no Kyojin 1".');
 });
-
 
 // Handle text input for anime name and episode number
 bot.on('text', async ctx => {
@@ -26,16 +25,17 @@ bot.on('text', async ctx => {
     let animeName = input.slice(0, -1).join('-');
     const episodeNumber = input[input.length - 1];
 
-    // Check if episode number is a valid number
     if (isNaN(episodeNumber)) {
         ctx.reply('الرجاء إدخال رقم الحلقة.');
         return;
     }
 
-    // Remove any colons (:) from anime name
     animeName = animeName.replace(/:/g, '');
 
-    // Encode the anime name and episode number to ensure the URL is valid
+    await fetchAndModifyEpisodePage(ctx, animeName, episodeNumber);
+});
+
+async function fetchAndModifyEpisodePage(ctx, animeName, episodeNumber) {
     const encodedAnimeName = encodeURIComponent(animeName);
     const encodedEpisodeNumber = encodeURIComponent(`الحلقة-${episodeNumber}`);
     const url = `https://witanime.cyou/episode/${encodedAnimeName}-${encodedEpisodeNumber}/`;
@@ -46,13 +46,13 @@ bot.on('text', async ctx => {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0'
             }
         });
+
         if (response.status === 200) {
             const $ = cheerio.load(response.data);
 
-            // Modify the page as required
-            $('title').text('Anime'); // Change page title to "Anime"
-            $('link[rel="icon"]').remove(); // Remove page favicon
-
+            $('title').text('Anime');
+            // إزالة العناصر المطلوبة
+            $('link[rel="icon"]').remove();
             $('center').remove();
             $('h3:contains("وصف الحلقة")').remove();
             $('center a[href*="anitaku"]').closest('center').remove();
@@ -68,46 +68,60 @@ bot.on('text', async ctx => {
             $('a').filter((i, el) => $(el).attr('href') && $(el).attr('href').includes('/anime/')).remove();
             $('.user-post-info-content').remove();
             $('#disqus_thread').remove();
-
-            // Additional elements to be removed
             $('.second-section').remove();
             $('.container .user-post-info-content').remove();
             $('.container[style*="overflow: hidden; text-align: center;"]').remove();
             $('.container.episode-watch-conteiner').remove();
-
-            // Change link color to gray
             $('h3:contains("روابط تحميل الحلقة")').remove();
-
-            // Change text for quality
             $('li:contains("الجودة المتوسطة SD")').text('480p');
             $('li:contains("الجودة العالية HD")').text('720p');
             $('li:contains("الجودة الخارقة FHD")').text('1080p');
-
-            // Add CSS to set background image
             $('body').css({
                 'background-image': 'url("https://github.com/mhmod3/Mahmood/blob/main/3840x2160-black-solid-color-background.jpg?raw=true")',
                 'background-size': 'cover',
                 'background-position': 'center',
                 'background-repeat': 'no-repeat'
             });
-
-            // Add a note at the end of the page
             $('body').prepend('<div style="text-align: center; padding: 10px; font-size: 24px;">by : LiAnimebot</div>');
             $('body').append('<div style="text-align: center; padding: 10px; font-size: 24px;">ملاحظة : قد تتواجد سيرفرات لا تعمل!. وايضا قد تتواجد في سيرفرات التحميل أعلانات يفضل تشغيل مانع للأعلانات</div>');
 
-            // Create a random file name
-            const randomFileName = uuidv4().slice(0, 10) + '.html';
+            // البحث عن زر التحميل المباشر
+            const downloadUrl = `https://anime4up.top/episode/${encodedAnimeName}-${encodedEpisodeNumber}`;
+            const downloadResponse = await axios.get(downloadUrl);
+            const downloadHtml = cheerio.load(downloadResponse.data);
+            const directDownloadButton = downloadHtml('div.dw-online a[href*="download"]');
+            let directDownloadLink = '';
 
-            // Save modified page as HTML file
+            if (directDownloadButton.length > 0) {
+                directDownloadLink = directDownloadButton.attr('href');
+            }
+
+            const inlineKeyboard = [
+                [
+                    Markup.button.callback('الحلقة التالية', `next_${animeName}_${parseInt(episodeNumber) + 1}`)
+                ],
+                [
+                    Markup.button.callback('مشاهدة', `watch_${encodedAnimeName}`)
+                ]
+            ];
+
+            if (directDownloadLink) {
+                inlineKeyboard.push([
+                    Markup.button.url('تحميل مباشر (أحتياطي قد تتواجد اعلانات مزعجة بشكل لا يصدق)', directDownloadLink)
+                ]);
+            }
+
             const modifiedHtml = $.html();
+            const randomFileName = uuidv4().slice(0, 10) + '.html';
             fs.writeFileSync(randomFileName, modifiedHtml);
 
-            // Send the file as a response to the user
-            await ctx.replyWithDocument({ source: randomFileName });
+            await ctx.replyWithDocument(
+                { source: randomFileName, filename: randomFileName },
+                { caption: `اسم الأنمي: ${animeName.replace(/-/g, ' ')}\nرقم الحلقة: ${episodeNumber}`, ...Markup.inlineKeyboard(inlineKeyboard) }
+            );
 
-            // Delete the file after sending
             fs.unlinkSync(randomFileName);
-
+            
         } else {
             ctx.reply('حدث خطأ معين!');
         }
@@ -115,7 +129,80 @@ bot.on('text', async ctx => {
         console.error('Error:', error);
         ctx.reply('حدث خطأ ما!');
     }
+}
+
+bot.action(/next_(.+)_(\d+)/, async ctx => {
+    const animeName = ctx.match[1];
+    const episodeNumber = parseInt(ctx.match[2]);
+
+    await fetchAndModifyEpisodePage(ctx, animeName, episodeNumber);
 });
 
+bot.action(/watch_(.+)/, async ctx => {
+    const animeName = ctx.match[1];
+
+    await fetchAndModifyWatchPage(ctx, animeName);
+});
+
+async function fetchAndModifyWatchPage(ctx, animeName) {
+    const encodedAnimeName = encodeURIComponent(animeName);
+    const watchUrl = `https://www.animedar.xyz/anime/${encodedAnimeName}`;
+
+    try {
+        const response = await axios.get(watchUrl, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0'
+            }
+        });
+
+        if (response.status === 200) {
+            const $ = cheerio.load(response.data);
+
+            $('.th').remove();
+            $('.bigcontent.nobigcv').remove();
+            $('img[src="https://www.animedar.xyz/wp-content/uploads/2023/11/join-us-whatsapp.png"]').remove();
+            $('img[src="https://www.animedar.xyz/wp-content/uploads/2023/11/join-us-telegram.png"]').remove();
+            $('img[src="https://www.animedar.xyz/wp-content/uploads/2023/11/join-us-ins.png"]').remove();
+            $('.releases:contains("تحميل")').remove();
+            $('.linkul').remove();
+            $('.bixbox.synp').remove();
+            $('.bixbox.charvoice').remove();
+            $('.socialts').remove();
+            $('.releases:contains("المسلسلات الموصى بها")').remove();
+            $('.listupd').remove();
+            $('.menu-footer-container').remove();
+            $('.footercopyright').remove();
+            $('.cmt.commentx').remove();
+            $('.releases:contains("تعليق")').remove();
+            $('.centernav').remove();
+            
+            // حذف التعليقات التي تحتوي على العناصر المطلوبة
+            $('div.a-wrapper').remove();
+            $('div.dar-grip-wrapper').remove();
+            $('body').prepend('<div style="text-align: center; padding: 10px; font-size: 24px;">by : LiAnimebot</div>');
+            $('body').append('<div style="text-align: center; padding: 10px; font-size: 24px;">ملاحظة : قد تتواجد سيرفرات لا تعمل!. وايضا قد تتواجد في سيرفرات التحميل أعلانات يفضل تشغيل مانع للأعلانات</div>');
+
+                      
+
+            const modifiedHtml = $.html();
+            const randomFileName = uuidv4().slice(0, 10) + '.html';
+            fs.writeFileSync(randomFileName, modifiedHtml);
+
+            await ctx.replyWithDocument(
+                { source: randomFileName, filename: randomFileName },
+                { caption: `اسم الأنمي: ${animeName.replace(/-/g, ' ')}`, ...Markup.inlineKeyboard([
+                ]) }
+            );
+
+            fs.unlinkSync(randomFileName);
+            
+        } else {
+            ctx.reply('حدث خطأ معين أثناء مشاهدة الحلقة!');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        ctx.reply('حدث خطأ ما أثناء مشاهدة الحلقة!');
+    }
+}
 keepAlive();
 bot.launch();
