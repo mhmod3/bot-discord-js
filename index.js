@@ -1,1 +1,375 @@
-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
+const { Telegraf, Markup } = require('telegraf');
+const axios = require('axios');
+const fs = require('fs');
+const keepAlive = require('./keep_alive.js');
+
+
+const MAL_API_KEY = process.env['MAL'];
+const OWNER_ID = process.env['id'];
+const bot = new Telegraf(process.env['token']);
+
+let animeList = [];
+
+if (fs.existsSync('animeList.json')) {
+    animeList = JSON.parse(fs.readFileSync('animeList.json'));
+}
+
+let addingAnime = false;
+let editingAnime = false;
+let currentAnimeName = '';
+let qualityFiles = [];
+let currentEditIndex = null;
+let waitingForName = false;
+let waitingForLinks = false;
+let qualityToEdit = '';
+
+
+
+bot.command('edit', (ctx) => {
+    try {
+        if (ctx.message.from.id.toString() !== OWNER_ID) {
+            return ctx.reply('عذراً، هذا الأمر مخصص لمالك البوت فقط.');
+        }
+
+        if (editingAnime) {
+            return ctx.reply('أنت بالفعل في وضع تعديل. يرجى إكمال العملية الحالية أولاً.');
+        }
+
+        const animeName = ctx.message.text.split(' ').slice(1).join(' ');
+        if (!animeName) {
+            return ctx.reply('يرجى تحديد اسم الأنمي للتعديل.\nمثال: /edit Naruto');
+        }
+
+        const matchedAnimeIndex = animeList.findIndex(anime => anime.name.toLowerCase().includes(animeName.toLowerCase()));
+        if (matchedAnimeIndex === -1) {
+            return ctx.reply('الأنمي غير موجود في القائمة.');
+        }
+
+        currentEditIndex = matchedAnimeIndex;
+        editingAnime = true;
+        const anime = animeList[matchedAnimeIndex];
+
+        ctx.reply('اختر ما تريد تعديله:',
+            Markup.inlineKeyboard([
+                [Markup.button.callback('تعديل اسم الأنمي', 'edit_name')],
+                [Markup.button.callback('تعديل روابط الجودات', 'edit_quality')],
+                [Markup.button.callback('إلغاء', 'cancel_edit')]
+            ])
+        );
+    } catch (error) {
+        console.error(error);
+        ctx.reply('حدث خطأ أثناء تنفيذ الأمر.');
+    }
+});
+
+bot.action('edit_name', (ctx) => {
+    try {
+        if (!editingAnime || currentEditIndex === null) return;
+
+        waitingForName = true;
+        ctx.reply('أرسل الاسم الجديد للأنمي:');
+    } catch (error) {
+        console.error(error);
+        ctx.reply('حدث خطأ أثناء تعديل اسم الأنمي.');
+    }
+});
+
+bot.on('text', (ctx) => {
+    try {
+        if (waitingForName) {
+            if (ctx.message.from.id.toString() !== OWNER_ID) return;
+
+            animeList[currentEditIndex].name = ctx.message.text;
+            fs.writeFileSync('animeList.json', JSON.stringify(animeList));
+            ctx.reply('تم تعديل اسم الأنمي بنجاح.');
+            waitingForName = false;
+            editingAnime = false;
+            currentEditIndex = null;
+        }
+
+        if (waitingForLinks) {
+            if (ctx.message.from.id.toString() !== OWNER_ID) return;
+
+            const links = ctx.message.text.split('\n').filter(link => link.trim() !== '');
+            const qualityData = animeList[currentEditIndex].qualities.find(q => q.quality === qualityToEdit);
+            if (qualityData) {
+                qualityData.links = links;
+                fs.writeFileSync('animeList.json', JSON.stringify(animeList));
+                ctx.reply('تم تعديل روابط الجوده بنجاح.');
+            }
+            waitingForLinks = false;
+            editingAnime = false;
+            currentEditIndex = null;
+        }
+    } catch (error) {
+        console.error(error);
+        ctx.reply('حدث خطأ أثناء التعامل مع النص.');
+    }
+});
+
+bot.action('edit_quality', (ctx) => {
+    try {
+        if (!editingAnime || currentEditIndex === null) return;
+
+        ctx.reply('اختر الجوده لتعديل روابطها:',
+            Markup.inlineKeyboard(
+                animeList[currentEditIndex].qualities.map(quality => 
+                    [Markup.button.callback(quality.quality, `edit_links_${quality.quality}`)]
+                ).concat([
+                    [Markup.button.callback('إلغاء', 'cancel_edit')]
+                ])
+            )
+        );
+    } catch (error) {
+        console.error(error);
+        ctx.reply('حدث خطأ أثناء تعديل الروابط.');
+    }
+});
+
+bot.action(/^edit_links_(.+)$/, (ctx) => {
+    try {
+        if (!editingAnime || currentEditIndex === null) return;
+
+        qualityToEdit = ctx.match[1];
+        waitingForLinks = true;
+        ctx.reply('أرسل روابط الجوده الجديدة (سطر واحد لكل رابط). بعد الانتهاء، اضغط على زر "انهاء".',
+            Markup.inlineKeyboard([Markup.button.callback('انهاء', 'finish_edit_links')])
+        );
+    } catch (error) {
+        console.error(error);
+        ctx.reply('حدث خطأ أثناء تعديل روابط الجوده.');
+    }
+});
+
+bot.action('finish_edit_links', (ctx) => {
+    try {
+        if (!editingAnime || currentEditIndex === null) return;
+
+        ctx.reply('تم الانتهاء من تعديل الروابط.');
+        waitingForLinks = false;
+        editingAnime = false;
+        currentEditIndex = null;
+    } catch (error) {
+        console.error(error);
+        ctx.reply('حدث خطأ أثناء إنهاء تعديل الروابط.');
+    }
+});
+
+bot.action('cancel_edit', (ctx) => {
+    try {
+        editingAnime = false;
+        currentEditIndex = null;
+        ctx.reply('تم إلغاء عملية التعديل.');
+    } catch (error) {
+        console.error(error);
+        ctx.reply('حدث خطأ أثناء إلغاء التعديل.');
+    }
+});
+
+
+
+
+
+
+
+bot.command('d', (ctx) => {
+    try {
+        if (ctx.message.from.id.toString() !== OWNER_ID) {
+            return ctx.reply('عذراً، هذا الأمر مخصص لمالك البوت فقط.');
+        }
+        const animeName = ctx.message.text.split(' ').slice(1).join(' ');
+        if (!animeName) {
+            return ctx.reply('يرجى تحديد اسم الأنمي للحذف.');
+        }
+
+        const matchedAnimeIndex = animeList.findIndex(anime => anime.name.toLowerCase().includes(animeName.toLowerCase()));
+        if (matchedAnimeIndex === -1) {
+            return ctx.reply('الأنمي غير موجود في القائمة.');
+        }
+
+        animeList.splice(matchedAnimeIndex, 1);
+        fs.writeFileSync('animeList.json', JSON.stringify(animeList));
+
+        ctx.reply(`تم حذف الأنمي ${animeName} من القائمة بنجاح.`);
+    } catch (error) {
+        console.error(error);
+        ctx.reply('حدث خطأ أثناء تنفيذ الأمر.');
+    }
+});
+
+bot.command('add', async (ctx) => {
+    try {
+        if (ctx.message.from.id.toString() !== OWNER_ID) {
+            return ctx.reply('عذراً، هذا الأمر مخصص لمالك البوت فقط.');
+        }
+        const animeName = ctx.message.text.split(' ').slice(1).join(' ');
+        if (!animeName) {
+            return ctx.reply('يرجى تحديد اسم الأنمي.');
+        }
+
+        addingAnime = true;
+        currentAnimeName = animeName;
+        qualityFiles = [];
+
+        ctx.reply('يرجى إرسال ملفات الجودات (مثل 1080.txt, 720.txt, 480.txt). بعد الانتهاء، اضغط على زر "انهاء".',
+            Markup.inlineKeyboard([Markup.button.callback('انهاء', 'finish_add')]));
+    } catch (error) {
+        console.error(error);
+        ctx.reply('حدث خطأ أثناء تنفيذ الأمر.');
+    }
+});
+
+bot.on('document', async (ctx) => {
+    try {
+        if (!addingAnime && !editingAnime) return;
+
+        const fileId = ctx.message.document.file_id;
+        const fileName = ctx.message.document.file_name.split('.')[0]; // جلب اسم الجوده بدون الامتداد
+        const fileUrl = await ctx.telegram.getFileLink(fileId);
+
+        axios.get(fileUrl.href)
+            .then(response => {
+                const episodeLinks = response.data.split('\n').filter(link => link.trim() !== '');
+                qualityFiles.push({ quality: fileName, links: episodeLinks });
+                ctx.reply(`تم إضافة الجوده ${fileName}. يمكنك إرسال ملف آخر أو الضغط على "انهاء".`);
+            })
+            .catch(() => {
+                ctx.reply('حدث خطأ أثناء تحميل ملف الروابط.');
+            });
+    } catch (error) {
+        console.error(error);
+        ctx.reply('حدث خطأ أثناء تحميل ملف الروابط.');
+    }
+});
+
+bot.action('finish_add', async (ctx) => {
+    try {
+        if (!addingAnime) return;
+
+        const promises = qualityFiles.flatMap(file => file.links.map(link => axios.head(link).catch(() => null)));
+
+        Promise.all(promises).then(results => {
+            const validLinks = qualityFiles.map(file => ({
+                quality: file.quality,
+                links: file.links.filter((_, index) => results[index] !== null)
+            }));
+
+            if (validLinks.every(file => file.links.length === 0)) {
+                return ctx.reply('جميع الروابط غير صالحة.');
+            }
+
+            const animeData = { name: currentAnimeName, qualities: validLinks };
+            animeList.push(animeData);
+            fs.writeFileSync('animeList.json', JSON.stringify(animeList));
+
+            ctx.reply(`تم إضافة الأنمي ${currentAnimeName} بنجاح.`);
+            
+            addingAnime = false;
+            currentAnimeName = '';
+            qualityFiles = [];
+        });
+    } catch (error) {
+        console.error(error);
+        ctx.reply('حدث خطأ أثناء إنهاء إضافة الأنمي.');
+    }
+});
+
+bot.command('s', async (ctx) => {
+    try {
+        const animeName = ctx.message.text.split(' ').slice(1).join(' ');
+        if (!animeName) {
+            return ctx.reply('يرجى تحديد اسم الأنمي للبحث\nمثال "/s Shingeki no Kyojin"');
+        }
+
+        const matchedAnime = animeList.find(anime => anime.name.toLowerCase().includes(animeName.toLowerCase()));
+        if (!matchedAnime) {
+            return ctx.reply('الأنمي غير موجود في القائمة.', 
+                Markup.inlineKeyboard([
+                    [Markup.button.callback('طلب الأنمي', `request_anime_${animeName}`)]
+                ])
+            );
+        }
+
+        axios.get(`https://api.myanimelist.net/v2/anime?q=${matchedAnime.name}&limit=1`, {
+            headers: {
+                'X-MAL-CLIENT-ID': MAL_API_KEY
+            }
+        })
+        .then(response => {
+            if (response.data.data.length === 0) {
+                return ctx.reply('لم يتم العثور على معلومات الأنمي.');
+            }
+            const animeInfo = response.data.data[0].node;
+            const animeDetails = `
+الاسم: ${animeInfo.title || 'غير متوفر'}
+مستمر: ${animeInfo.status === 'currently_airing' ? 'مستمر' : 'غير مستمر'}
+رابط: [اضغط هنا](https://myanimelist.net/anime/${animeInfo.id})\n
+DMCA: https://telegra.ph/تنبيه-حقوق-الطبع-والنشر-08-05
+            `;
+
+            ctx.replyWithPhoto({ url: animeInfo.main_picture.medium }, { caption: animeDetails, parse_mode: 'Markdown' })
+                .then(() => {
+                    const qualityButtons = matchedAnime.qualities.map(quality => Markup.button.callback(quality.quality, `quality_${quality.quality}_${matchedAnime.name}`));
+
+                    const markup = Markup.inlineKeyboard([
+                        ...qualityButtons.map(button => [button]),
+                        [Markup.button.callback('إبلاغ عن مشكلة', `report_${matchedAnime.name}`)]
+                    ]);
+
+                    ctx.reply('اختر الجوده:', markup);
+                });
+        })
+        .catch(error => {
+            console.error(error);
+            ctx.reply('حدث خطأ أثناء جلب معلومات الأنمي.');
+        });
+    } catch (error) {
+        console.error(error);
+        ctx.reply('حدث خطأ أثناء البحث عن الأنمي.');
+    }
+});
+
+bot.action(/^report_(.+)$/, (ctx) => {
+    try {
+        const animeName = ctx.match[1];
+        ctx.telegram.sendMessage(OWNER_ID, `تقرير جديد: الأنمي ${animeName}\nالمستخدم: @${ctx.from.username || ctx.from.id}`);
+        ctx.reply('تم إرسال أبلاغك إلى المالك. شكراً لك.');
+    } catch (error) {
+        console.error(error);
+        ctx.reply('حدث خطأ أثناء إرسال التقرير.');
+    }
+});
+
+bot.action(/^quality_(.+)_(.+)$/, (ctx) => {
+    try {
+        const quality = ctx.match[1];
+        const animeName = ctx.match[2];
+        const matchedAnime = animeList.find(anime => anime.name === animeName);
+        if (!matchedAnime) return;
+
+        const selectedQuality = matchedAnime.qualities.find(q => q.quality === quality);
+        if (!selectedQuality) return;
+
+        const episodeButtons = selectedQuality.links.map((link, index) => Markup.button.url(`حلقة ${index + 1}`, link));
+
+        const markup = Markup.inlineKeyboard(episodeButtons.map(button => [button]));
+
+        ctx.reply('اختر الحلقه:\n\nيمكنك نسخ رابط الحلقة ووضعه في أي مشغل فيديو وسوف تعمل الحلقة\n\n(لا تعمل هذه الطريقة دائما)', markup);
+    } catch (error) {
+        console.error(error);
+        ctx.reply('حدث خطأ أثناء عرض الحلقات.');
+    }
+});
+
+bot.action(/^request_anime_(.+)$/, (ctx) => {
+    try {
+        const animeName = ctx.match[1];
+        ctx.telegram.sendMessage(OWNER_ID, `طلب أنمي جديد: ${animeName}\nالمستخدم: @${ctx.from.username || ctx.from.id}`);
+        ctx.reply('تم إرسال طلبك إلى المالك. شكراً لك.');
+    } catch (error) {
+        console.error(error);
+        ctx.reply('حدث خطأ أثناء إرسال الطلب.');
+    }
+});
+keepAlive();
+bot.launch().then(() => console.log('Bot is running...'));
