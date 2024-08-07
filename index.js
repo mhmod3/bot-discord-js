@@ -1,8 +1,8 @@
 const { Telegraf, Markup } = require('telegraf');
 const axios = require('axios');
 const fs = require('fs');
-const keepAlive = require('./keep_alive.js');
-
+const crypto = require('crypto');
+const levenshtein = require('fast-levenshtein');
 
 const BOT_TOKEN = process.env['token'];
 const OWNER_ID = process.env['id'];
@@ -20,12 +20,23 @@ if (!fs.existsSync(animeListFilePath)) {
 }
 
 let userState = {};
-
 function resetUserState(userId) {
     userState[userId] = {
         action: null,
         data: {}
     };
+}
+
+let addAnimeState = {
+    addingAnime: false,
+    currentAnimeName: '',
+    qualityFiles: []
+};
+
+function resetAddAnimeState() {
+    addAnimeState.addingAnime = false;
+    addAnimeState.currentAnimeName = '';
+    addAnimeState.qualityFiles = [];
 }
 
 bot.use((ctx, next) => {
@@ -66,16 +77,24 @@ bot.command('report', (ctx) => {
     ctx.reply('يرجى كتابة اسم الأنمي للإبلاغ.');
 });
 
+bot.command('animelist', (ctx) => {
+    if (ctx.message.from.id.toString() !== OWNER_ID) {
+        return ctx.reply('عذراً، هذا الأمر مخصص لمالك البوت فقط.');
+    }
+    ctx.replyWithDocument({ source: animeListFilePath, filename: 'animeList.json' });
+});
+
 bot.on('text', (ctx) => {
     const userId = ctx.from.id.toString();
     const action = userState[userId].action;
     const inputText = ctx.message.text.trim();
 
     if (action === 'search') {
-        const query = inputText;
-        const matchedAnime = animeList.find(anime => anime.name.toLowerCase() === query.toLowerCase());
+        const query = inputText.toLowerCase();
+        const matchedAnime = animeList.find(anime => anime.name.toLowerCase() === query);
+
         if (matchedAnime) {
-            ctx.reply('اختر الجودة:\n\nDMAC: https://telegra.ph/تنبيه-حقوق-الطبع-والنشر-08-05',
+            ctx.reply('الحلقات ستكون في الملف الذي سوف ينرسل لك عندما تختار الجوده (فقط قم بألنقر عليه)\n\nتأكد من تحميل برنامج "VLC" على جهازك\n\n\nأختر الجوده:',
                 Markup.inlineKeyboard(
                     matchedAnime.qualities.map(quality =>
                         [Markup.button.callback(quality.quality, `select_quality_${matchedAnime.name}_${quality.quality}`)]
@@ -83,9 +102,26 @@ bot.on('text', (ctx) => {
                 )
             );
         } else {
-            ctx.reply(`الأنمي ${query} غير موجود في القائمة.`, Markup.inlineKeyboard([
-                Markup.button.callback('إرسال طلب لإضافة هذا الأنمي', `request_add_anime_${query}`)
-            ]));
+            const similarAnimes = animeList
+                .map(anime => ({
+                    name: anime.name,
+                    distance: levenshtein.get(query, anime.name.toLowerCase())
+                }))
+                .sort((a, b) => a.distance - b.distance)
+                .slice(0, 5);
+
+            if (similarAnimes.length > 0) {
+                ctx.reply(`لم يتم العثور على الانمي ، ولكن هنالك أسماء مشابهة :\n\n` +
+                    similarAnimes.map(anime => anime.name).join('\n'),
+                    Markup.inlineKeyboard([
+                        Markup.button.callback('إرسال طلب لإضافة الأنمي', `request_add_anime_${query}`)
+                    ])
+                );
+            } else {
+                ctx.reply(`الأنمي ${query} غير موجود في القائمة.`, Markup.inlineKeyboard([
+                    Markup.button.callback('إرسال طلب لإضافة هذا الأنمي', `request_add_anime_${query}`)
+                ]));
+            }
         }
         resetUserState(userId);
     } else if (action === 'delete') {
@@ -109,10 +145,10 @@ bot.on('text', (ctx) => {
         const animeName = inputText;
         ctx.reply('اختر سبب الإبلاغ:',
             Markup.inlineKeyboard([
-                [Markup.button.callback('الجودة ضعيفة', `report_reason_${animeName}_quality`)],
-                [Markup.button.callback('مشكلة في الترجمة', `report_reason_${animeName}_translation`)],
-                [Markup.button.callback('مشكلة في الصوت', `report_reason_${animeName}_sound`)],
-                [Markup.button.callback('مشاكل اخرى (حلقات لا يعملن)', `report_reason_${animeName}_other`)]
+                [Markup.button.callback(`الجودة ضعيفة (${animeName})`, `report_reason_${animeName}_quality`)],
+                [Markup.button.callback(`مشكلة في الترجمة (${animeName})`, `report_reason_${animeName}_translation`)],
+                [Markup.button.callback(`مشكلة في الصوت (${animeName})`, `report_reason_${animeName}_sound`)],
+                [Markup.button.callback(`مشاكل اخرى (حلقات لا تعمل) (${animeName})`, `report_reason_${animeName}_other`)]
             ])
         );
         resetUserState(userId);
@@ -151,7 +187,7 @@ bot.action('finish_add', (ctx) => {
     }
 });
 
-bot.action(/^select_quality_(.+)_(.+)$/, (ctx) => {
+bot.action(/^select_quality_(.+)_(.+)$/, async (ctx) => {
     const animeName = ctx.match[1];
     const quality = ctx.match[2];
     const anime = animeList.find(anime => anime.name.toLowerCase() === animeName.toLowerCase());
@@ -163,50 +199,133 @@ bot.action(/^select_quality_(.+)_(.+)$/, (ctx) => {
     const qualityData = anime.qualities.find(q => q.quality === quality);
 
     if (qualityData) {
-        ctx.reply('اختر الحلقة:\n\nيرجى أخذ الرابط وتشغيله في احدى مشغلات الفيديو لتجربة افضل.',
-            Markup.inlineKeyboard(
-                qualityData.links.map((link, index) =>
-                    [Markup.button.url(`الحلقة ${index + 1}`, link)]
-                )
-            )
-        );
+        // إنشاء ملف HTML وتحديد مساره
+        const htmlFilePath = createHtmlFile(animeName, quality, qualityData.links);
+
+        // إرسال الملف مع تعليق
+        await ctx.replyWithDocument({
+            source: htmlFilePath,
+            caption: 'يرجى تحميل برنامج VLC لمشاهدة الحلقات.'
+        });
+
+        // حذف الملف بعد الإرسال
+        fs.unlinkSync(htmlFilePath);
     } else {
         ctx.reply('حدث خطأ في اختيار الجودة.');
     }
 });
 
+bot.action(/^request_add_anime_(.+)$/, (ctx) => {
+    const requestedAnime = ctx.match[1];
+    ctx.telegram.sendMessage(OWNER_ID, `طلب إضافة أنمي جديد: ${requestedAnime}`);
+    ctx.reply('تم إرسال طلبك لإضافة الأنمي.');
+});
+
 bot.action(/^report_reason_(.+)_(.+)$/, (ctx) => {
     const animeName = ctx.match[1];
     const reason = ctx.match[2];
-    const reasonText = {
-        quality: 'الجودة ضعيفة',
-        translation: 'مشكلة في الترجمة',
-        sound: 'مشكلة في الصوت',
-        other: 'مشاكل اخرى'
-    }[reason];
 
-    if (!reasonText) {
-        return ctx.reply('سبب الإبلاغ غير صالح.');
-    }
+    const reportMessage = `إبلاغ جديد:
+    الأنمي: ${animeName}
+    السبب: ${reason}`;
 
-    ctx.telegram.sendMessage(OWNER_ID, `بلاغ عن مشكلة بخصوص الأنمي: ${animeName}\nالسبب: ${reasonText}`);
-    ctx.reply('تم إرسال البلاغ بنجاح.');
+    ctx.telegram.sendMessage(OWNER_ID, reportMessage);
+    ctx.reply('تم إرسال الإبلاغ. شكرًا لك.');
 });
 
-bot.action(/^request_add_anime_(.+)$/, (ctx) => {
-    const animeName = ctx.match[1];
-    ctx.telegram.sendMessage(OWNER_ID, `طلب لإضافة الأنمي: ${animeName}`);
-    ctx.reply('تم إرسال طلب لإضافة الأنمي بنجاح.');
-});
+function createHtmlFile(animeName, quality, links) {
+    const randomName = crypto.randomBytes(5).toString('hex');
+    const htmlFilePath = `${randomName}.html`;
 
-function resetAddAnimeState() {
-    addAnimeState = {
-        addingAnime: false,
-        currentAnimeName: '',
-        qualityFiles: []
-    };
+    const htmlContent = `<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${animeName} - ${quality}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #000;
+            color: #fff;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+        .top-button {
+            display: block;
+            width: 80%;
+            margin: 10px auto;
+            padding: 10px;
+            color: #fff;
+            background-color: #20b2aa;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+            font-size: 18px;
+            transition: background-color 0.3s;
+        }
+        .top-button:hover {
+            background-color: #2e8b57;
+        }
+        .container {
+            padding: 20px;
+        }
+        h1 {
+            color: #1e90ff;
+        }
+        .button {
+            display: block;
+            width: 80%;
+            margin: 10px auto;
+            padding: 10px;
+            color: #fff;
+            background-color: #1e90ff;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+            font-size: 18px;
+            transition: background-color 0.3s;
+            position: relative;
+        }
+        .button:hover {
+            background-color: #4682b4;
+        }
+        .button.watched {
+            background-color: #32cd32;
+            color: #fff;
+        }
+        .checkmark {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 18px;
+            display: none;
+        }
+        .button.watched .checkmark {
+            display: inline;
+        }
+    </style>
+    <script>
+        function markAsWatched(button) {
+            button.classList.toggle('watched');
+        }
+    </script>
+</head>
+<body>
+    <a href="https://t.me/LiAnimeBot" class="top-button" target="_blank">By : LiAnimebot</a>
+    <div class="container">
+        <h1>${animeName} - ${quality}</h1>
+        ${links.map((link, index) => `<a href="vlc://${link}" class="button" target="_blank" onclick="markAsWatched(this)">الحلقة ${index + 1}<span class="checkmark">✅</span></a>`).join('\n')}
+        <a href="https://telegra.ph/تنبيه-حقوق-الطبع-والنشر-08-05" class="button" target="_blank">DMCA</a>
+    </div>
+</body>
+</html>`;
+
+    fs.writeFileSync(htmlFilePath, htmlContent);
+    return htmlFilePath;
 }
-keepAlive();
-bot.launch().then(() => {
-    console.log('Bot is running...');
-});
+
+bot.launch();
+console.log('Bot is running...');
