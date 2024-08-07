@@ -75,7 +75,7 @@ bot.on('text', (ctx) => {
         const query = inputText;
         const matchedAnime = animeList.find(anime => anime.name.toLowerCase() === query.toLowerCase());
         if (matchedAnime) {
-            ctx.reply('اختر الجودة:',
+            ctx.reply('اختر الجودة:\n\nDMAC: https://telegra.ph/تنبيه-حقوق-الطبع-والنشر-08-05',
                 Markup.inlineKeyboard(
                     matchedAnime.qualities.map(quality =>
                         [Markup.button.callback(quality.quality, `select_quality_${matchedAnime.name}_${quality.quality}`)]
@@ -155,7 +155,7 @@ bot.action(/^select_quality_(.+)_(.+)$/, (ctx) => {
     const animeName = ctx.match[1];
     const quality = ctx.match[2];
     const anime = animeList.find(anime => anime.name.toLowerCase() === animeName.toLowerCase());
-    
+
     if (!anime) {
         return ctx.reply('الأنمي غير موجود في القائمة.');
     }
@@ -163,7 +163,7 @@ bot.action(/^select_quality_(.+)_(.+)$/, (ctx) => {
     const qualityData = anime.qualities.find(q => q.quality === quality);
 
     if (qualityData) {
-        ctx.reply('اختر الحلقة:',
+        ctx.reply('اختر الحلقة:\n\nيرجى أخذ الرابط وتشغيله في احدى مشغلات الفيديو لتجربة افضل.',
             Markup.inlineKeyboard(
                 qualityData.links.map((link, index) =>
                     [Markup.button.url(`الحلقة ${index + 1}`, link)]
