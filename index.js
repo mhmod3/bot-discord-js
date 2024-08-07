@@ -3,6 +3,7 @@ const axios = require('axios');
 const fs = require('fs');
 const crypto = require('crypto');
 const levenshtein = require('fast-levenshtein');
+const keepAlive = require('./keep_alive.js');
 
 const BOT_TOKEN = process.env['token'];
 const OWNER_ID = process.env['id'];
@@ -326,6 +327,6 @@ function createHtmlFile(animeName, quality, links) {
     fs.writeFileSync(htmlFilePath, htmlContent);
     return htmlFilePath;
 }
-
+keepAlive();
 bot.launch();
 console.log('Bot is running...');
