@@ -144,6 +144,12 @@ bot.on('text', (ctx) => {
         resetUserState(userId);
     } else if (action === 'report') {
         const animeName = inputText;
+        const matchedAnime = animeList.find(anime => anime.name.toLowerCase() === animeName.toLowerCase());
+
+        if (!matchedAnime) {
+            return ctx.reply('الأنمي غير موجود في القائمة.');
+        }
+
         ctx.reply('اختر سبب الإبلاغ:',
             Markup.inlineKeyboard([
                 [Markup.button.callback(`الجودة ضعيفة (${animeName})`, `report_reason_${animeName}_quality`)],
@@ -218,27 +224,20 @@ bot.action(/^select_quality_(.+)_(.+)$/, async (ctx) => {
 
 bot.action(/^request_add_anime_(.+)$/, (ctx) => {
     const requestedAnime = ctx.match[1];
-    ctx.telegram.sendMessage(OWNER_ID, `طلب إضافة أنمي جديد: ${requestedAnime}`);
-    ctx.reply('تم إرسال طلبك لإضافة الأنمي.');
+    ctx.telegram.sendMessage(OWNER_ID, `طلب لإضافة الأنمي: ${requestedAnime}`);
+    ctx.reply('تم إرسال طلبك لإضافة الأنمي. شكرًا لك.');
 });
 
 bot.action(/^report_reason_(.+)_(.+)$/, (ctx) => {
     const animeName = ctx.match[1];
     const reason = ctx.match[2];
 
-    const reportMessage = `إبلاغ جديد:
-    الأنمي: ${animeName}
-    السبب: ${reason}`;
-
-    ctx.telegram.sendMessage(OWNER_ID, reportMessage);
-    ctx.reply('تم إرسال الإبلاغ. شكرًا لك.');
+    ctx.telegram.sendMessage(OWNER_ID, `بلاغ حول الأنمي ${animeName} بسبب: ${reason}`);
+    ctx.reply('تم إرسال بلاغك. شكرًا لك.');
 });
 
 function createHtmlFile(animeName, quality, links) {
-    const randomName = crypto.randomBytes(5).toString('hex');
-    const htmlFilePath = `${randomName}.html`;
-
-    const htmlContent = `<!DOCTYPE html>
+    const htmlContent =  `<!DOCTYPE html>
 <html lang="ar">
 <head>
     <meta charset="UTF-8">
@@ -324,9 +323,13 @@ function createHtmlFile(animeName, quality, links) {
 </body>
 </html>`;
 
-    fs.writeFileSync(htmlFilePath, htmlContent);
-    return htmlFilePath;
+    const fileName = `anime_${crypto.randomBytes(5).toString('hex')}.html`;
+    const filePath = `./${fileName}`;
+    fs.writeFileSync(filePath, htmlContent);
+
+    return filePath;
 }
+
 keepAlive();
 bot.launch();
 console.log('Bot is running...');
