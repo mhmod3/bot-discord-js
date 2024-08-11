@@ -6,13 +6,13 @@ const { v4: uuidv4 } = require('uuid');
 const { load } = require('cheerio'); // مكتبة لتحليل HTML
 const keepAlive = require('./keep_alive.js');
 
-
 const BOT_TOKEN = process.env['token'];
 const bot = new Telegraf(BOT_TOKEN);
 
+
 // زمن الانتظار الأقصى للطلبات (بالميلي ثانية)
 const TIMEOUT = 10000;
-const DELAY = 3000; // تأخير بين الطلبات لتقليل الحمل على الشبكة
+const DELAY = 2000; // تأخير بين الطلبات لتقليل الحمل على الشبكة
 
 bot.on('document', async (ctx) => {
   const fileId = ctx.message.document.file_id;
@@ -64,14 +64,11 @@ bot.action(/start_check_(.+)/, async (ctx) => {
         // تحليل محتوى HTML للبحث عن رسائل الأخطاء
         const $ = load(res.data);
         const statusCode = res.status;
-        if (statusCode >= 400) {
-          // فحص وجود رسائل خطأ معروفة في HTML
-          const bodyText = $('body').text().toLowerCase();
-          if (bodyText.includes('404') || bodyText.includes('not found')) {
-            nonWorkingLinks.push(currentLink);
-          } else {
-            workingLinks.push(currentLink);
-          }
+
+        // تحقق من الأخطاء بناءً على النصوص المحددة في HTML
+        const bodyText = $('body').text().toLowerCase();
+        if (statusCode >= 400 || bodyText.includes('404') || bodyText.includes('not found') || bodyText.includes('file not found')) {
+          nonWorkingLinks.push(currentLink);
         } else {
           workingLinks.push(currentLink);
         }
@@ -110,5 +107,7 @@ bot.action(/cancel_check_(.+)/, async (ctx) => {
   }
   await ctx.reply('تم إلغاء عملية الفحص وحذف الملف.');
 });
+
+
 keepAlive();
 bot.launch();
