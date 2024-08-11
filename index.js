@@ -9,7 +9,6 @@ const keepAlive = require('./keep_alive.js');
 const BOT_TOKEN = process.env['token'];
 const bot = new Telegraf(BOT_TOKEN);
 
-
 // زمن الانتظار الأقصى للطلبات (بالميلي ثانية)
 const TIMEOUT = 10000;
 const DELAY = 2000; // تأخير بين الطلبات لتقليل الحمل على الشبكة
@@ -67,6 +66,8 @@ bot.action(/start_check_(.+)/, async (ctx) => {
 
         // تحقق من الأخطاء بناءً على النصوص المحددة في HTML
         const bodyText = $('body').text().toLowerCase();
+        console.log(`Status Code: ${statusCode} for URL: ${currentLink}`);
+        console.log(`Body Text: ${bodyText}`);
         if (statusCode >= 400 || bodyText.includes('404') || bodyText.includes('not found') || bodyText.includes('file not found')) {
           nonWorkingLinks.push(currentLink);
         } else {
@@ -107,7 +108,6 @@ bot.action(/cancel_check_(.+)/, async (ctx) => {
   }
   await ctx.reply('تم إلغاء عملية الفحص وحذف الملف.');
 });
-
 
 keepAlive();
 bot.launch();
