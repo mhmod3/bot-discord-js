@@ -76,10 +76,10 @@ bot.on('document', async (ctx) => {
                     }
                 });
                 if (headResponse.status !== 200) {
-                    invalidResults.push(`الرابط في السطر ${i + 1} غير شغال: ${url}`);
+                    invalidResults.push(`الرابط في السطر ${i + 1} غير شغال: \n${url}`);
                 }
             } catch (error) {
-                invalidResults.push(`الرابط في السطر ${i + 1} غير شغال: ${url}`);
+                invalidResults.push(`الرابط في السطر ${i + 1} غير شغال: \n${url}`);
             }
         }
 
