@@ -1,4 +1,3 @@
-
 const { Telegraf } = require('telegraf');
 const axios = require('axios');
 const fs = require('fs');
@@ -76,10 +75,10 @@ bot.on('document', async (ctx) => {
                     }
                 });
                 if (headResponse.status !== 200) {
-                    invalidResults.push(`الرابط في السطر ${i + 1} غير شغال: \n${url}`);
+                    invalidResults.push(`أكلك ترى الروابط كلها شغاله ألا. \n\n${url} : ${i + 1}`);
                 }
             } catch (error) {
-                invalidResults.push(`كل الروابط تعمل ألا الرابط\n${url} الذي يوجد في سطر \n${i + 1}`);
+                invalidResults.push(`أكلك ترى الروابط كلها شغاله ألا.\n\n${url} : ${i + 1}`);
             }
         }
 
