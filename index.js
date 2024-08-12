@@ -20,6 +20,15 @@ const containsUrls = (text) => {
     return urlPattern.test(text);
 };
 
+// دالة لتقسيم النص إلى أجزاء صغيرة
+const splitMessage = (message, chunkSize = 4096) => {
+    const chunks = [];
+    for (let i = 0; i < message.length; i += chunkSize) {
+        chunks.push(message.substring(i, i + chunkSize));
+    }
+    return chunks;
+};
+
 bot.start((ctx) => ctx.reply('لا تسوي خوي ارسل ملفك واسكت.'));
 
 bot.on('document', async (ctx) => {
@@ -86,17 +95,17 @@ bot.on('document', async (ctx) => {
         // حذف الملف بعد الفحص
         fs.unlinkSync(tempFilePath);
 
-        // إرسال نتائج الفحص
-        const chunkSize = 4096; // حجم الرسالة في تليجرام
-        for (let i = 0; i < results.length; i += chunkSize) {
-            const chunk = results.slice(i, i + chunkSize).join('\n');
-            await ctx.reply(chunk);
+        // إرسال نتائج الفحص بعد تقسيمها
+        const messages = splitMessage(results.join('\n'));
+        for (const message of messages) {
+            await ctx.reply(message);
         }
 
     } catch (error) {
         await ctx.reply(`مشكلة: ${error.message}`);
     }
 });
+
 keepAlive();
 bot.launch();
 console.log('بوت التليجرام يعمل...');
