@@ -79,7 +79,7 @@ bot.on('document', async (ctx) => {
                     invalidResults.push(`الرابط في السطر ${i + 1} غير شغال: \n${url}`);
                 }
             } catch (error) {
-                invalidResults.push(`الرابط في السطر ${i + 1} غير شغال: \n${url}`);
+                invalidResults.push(`كل الروابط تعمل ألا الرابط\n${url} الذي يوجد في سطر \n${i + 1}`);
             }
         }
 
