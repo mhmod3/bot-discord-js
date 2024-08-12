@@ -1,3 +1,4 @@
+
 const { Telegraf } = require('telegraf');
 const axios = require('axios');
 const fs = require('fs');
@@ -18,15 +19,6 @@ const generateRandomFileName = (extension) => {
 const containsUrls = (text) => {
     const urlPattern = /https?:\/\/[^\s]+/g;
     return urlPattern.test(text);
-};
-
-// دالة لتقسيم النص إلى أجزاء صغيرة
-const splitMessage = (message, chunkSize = 4096) => {
-    const chunks = [];
-    for (let i = 0; i < message.length; i += chunkSize) {
-        chunks.push(message.substring(i, i + chunkSize));
-    }
-    return chunks;
 };
 
 bot.start((ctx) => ctx.reply('لا تسوي خوي ارسل ملفك واسكت.'));
@@ -69,8 +61,9 @@ bot.on('document', async (ctx) => {
 
         await ctx.reply('بدء نك* الروابط...');
 
-        let results = [];
-        for (const url of urls) {
+        let invalidResults = [];
+        for (let i = 0; i < urls.length; i++) {
+            const url = urls[i];
             try {
                 const headResponse = await axios.head(url, { 
                     timeout: 5000,
@@ -82,23 +75,21 @@ bot.on('document', async (ctx) => {
                         'Connection': 'keep-alive'
                     }
                 });
-                if (headResponse.status === 200) {
-                    results.push(`شغال يسطا: \n${url}`);
-                } else {
-                    results.push(`ما يشتغل يسطا: \n${url}`);
+                if (headResponse.status !== 200) {
+                    invalidResults.push(`الرابط في السطر ${i + 1} غير شغال: ${url}`);
                 }
             } catch (error) {
-                results.push(`ما يشتغل يسطا: \n${url}`);
+                invalidResults.push(`الرابط في السطر ${i + 1} غير شغال: ${url}`);
             }
         }
 
         // حذف الملف بعد الفحص
         fs.unlinkSync(tempFilePath);
 
-        // إرسال نتائج الفحص بعد تقسيمها
-        const messages = splitMessage(results.join('\n'));
-        for (const message of messages) {
-            await ctx.reply(message);
+        if (invalidResults.length === 0) {
+            await ctx.reply('جميع الروابط شغالة.');
+        } else {
+            await ctx.reply(invalidResults.join('\n'));
         }
 
     } catch (error) {
