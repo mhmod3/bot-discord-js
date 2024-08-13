@@ -75,10 +75,10 @@ bot.on('document', async (ctx) => {
                     }
                 });
                 if (headResponse.status !== 200) {
-                    invalidResults.push(`أكلك ترى الروابط كلها شغاله ألا. \n\n${url} : ${i + 1}`);
+                    invalidResults.push(`أكلك ترى الروابط كلها شغاله ألا. \n${url} : ${i + 1}\n`);
                 }
             } catch (error) {
-                invalidResults.push(`أكلك ترى الروابط كلها شغاله ألا.\n\n${url} : ${i + 1}`);
+                invalidResults.push(`أكلك ترى الروابط كلها شغاله ألا.\n${url} : ${i + 1}\n`);
             }
         }
 
