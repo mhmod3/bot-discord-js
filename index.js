@@ -1,278 +1,163 @@
-const { Telegraf } = require('telegraf');
+const { Telegraf, session } = require('telegraf');
+const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
-const javascriptObfuscator = require('javascript-obfuscator');
+const { v4: uuidv4 } = require('uuid');
 const keepAlive = require('./keep_alive.js');
 
 const BOT_TOKEN = process.env['token'];
 const bot = new Telegraf(BOT_TOKEN);
 
-// تعريف دالة لتشفير النصوص
-function encryptText(text) {
-    return Buffer.from(text).toString('base64');
-}
 
-// تعريف دالة لتشفير الروابط
-function encryptLink(link) {
-    return Buffer.from(link).toString('base64');
-}
+// إعدادات الجلسة
+bot.use(session({
+    defaultSession: () => ({ processing: false, lastUsed: 0 })  // تهيئة الجلسة الافتراضية
+}));
 
-bot.command('add', async (ctx) => {
-    let animeName = '';
-    let episodeNumber = '';
-    let qualityLinks = {
-        '1080p': '',
-        '720p': '',
-        '480p': ''
-    };
+// ترجمة الحالة إلى العربية
+const translateStatus = (status) => {
+    switch (status.toLowerCase()) {
+        case 'finished':
+            return 'مُكتمل';
+        case 'releasing':
+            return 'مُستمر';
+        case 'not_yet_released':
+            return 'لم يُعرض بعد';
+        case 'cancelled':
+            return 'ملغي';
+        default:
+            return 'أخرى';
+    }
+};
 
-    await ctx.reply('يرجى إدخال اسم الأنمي:');
-    bot.on('text', async (ctx) => {
-        if (!animeName) {
-            animeName = ctx.message.text;
-            await ctx.reply(`تم استقبال اسم الأنمي: ${animeName}\nيرجى إدخال رقم الحلقة:`);
-        } else if (!episodeNumber) {
-            episodeNumber = ctx.message.text;
-            await ctx.reply(`تم استقبال رقم الحلقة: ${episodeNumber}\nيرجى إدخال الرابط المباشر لجودة 1080p أو اكتب "تخطي":`);
-        } else if (!qualityLinks['1080p']) {
-            const link = ctx.message.text;
-            if (link.toLowerCase() !== 'تخطي') {
-                qualityLinks['1080p'] = encryptLink(link);
-            }
-            await ctx.reply('يرجى إدخال الرابط المباشر لجودة 720p أو اكتب "تخطي":');
-        } else if (!qualityLinks['720p']) {
-            const link = ctx.message.text;
-            if (link.toLowerCase() !== 'تخطي') {
-                qualityLinks['720p'] = encryptLink(link);
-            }
-            await ctx.reply('يرجى إدخال الرابط المباشر لجودة 480p أو اكتب "تخطي":');
-        } else if (!qualityLinks['480p']) {
-            const link = ctx.message.text;
-            if (link.toLowerCase() !== 'تخطي') {
-                qualityLinks['480p'] = encryptLink(link);
-            }
-
-            if (Object.values(qualityLinks).every(value => !value)) {
-                await ctx.reply('يجب توفير رابط واحد على الأقل لجودة. يرجى البدء من جديد.');
-                animeName = '';
-                episodeNumber = '';
-                qualityLinks = { '1080p': '', '720p': '', '480p': '' };
-                return;
-            }
-
-            const htmlContent = generateHtml(animeName, episodeNumber, qualityLinks);
-            const fileName = `${animeName.replace(/ /g, '_')}_Episode_${episodeNumber}.html`;
-            const filePath = path.join(__dirname, fileName);
-            fs.writeFileSync(filePath, htmlContent);
-
-            await ctx.replyWithDocument({ source: filePath });
-
-            // حذف الملف بعد إرساله
-            fs.unlinkSync(filePath);
-        }
-    });
+// تنفيذ الأمر /start
+bot.start((ctx) => {
+    ctx.reply("مرحباً! الرجاء إرسال لقطة للأنمي وأنا سأحاول التعرف عليه.");
 });
 
-function generateHtml(animeName, episodeNumber, qualityLinks) {
-    let buttonsHtml = '';
-    for (const [quality, link] of Object.entries(qualityLinks)) {
-        if (link) {
-            buttonsHtml += `<button onclick="play('${link}', this)" class="quality-button">${quality}</button>\n`;
+bot.on('photo', async (ctx) => {
+    const currentTime = Date.now();
+
+    try {
+        // التحقق من فترة الانتظار بين الاستخدامات
+        if (ctx.session.processing) {
+            return ctx.reply("⚠️ جاري معالجة صورة بالفعل، الرجاء الانتظار قليلاً.");
         }
+        if (currentTime - ctx.session.lastUsed < 16000) { // 16 ثانية
+            return ctx.reply("⚠️ يجب الانتظار 16 ثانية بين كل استخدام وآخر.");
+        }
+
+        // وضع علامة لبدء الجلسة ومعالجة الصورة
+        ctx.session.processing = true;
+        ctx.session.lastUsed = currentTime; // تحديث وقت آخر استخدام
+
+        // احصل على الصورة بجودة عالية
+        const fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
+        const file = await ctx.telegram.getFileLink(fileId);
+
+        // إرسال رسالة أولية
+        const initialMessage = await ctx.reply("📸 جاري معالجة الصورة...");
+
+        // استدعاء API موقع trace.moe
+        const traceMoeResponse = await axios.get('https://api.trace.moe/search', {
+            params: {
+                url: file.href
+            }
+        });
+
+        const traceData = traceMoeResponse.data.result[0];
+
+        // تأكد من أن الـ AniList ID موجود في الاستجابة
+        if (!traceData.anilist) {
+            throw new Error("لم يتم العثور على ID الخاص بـ AniList.\nتواصل مع : @liM7mod");
+        }
+
+        const anilistId = traceData.anilist;
+
+        // استدعاء API موقع AniList للحصول على تفاصيل الأنمي
+        const anilistResponse = await axios.post('https://graphql.anilist.co', {
+            query: `
+            query ($id: Int) {
+                Media(id: $id, type: ANIME) {
+                    title {
+                        romaji
+                        english
+                        native
+                    }
+                    status
+                    startDate {
+                        year
+                    }
+                }
+            }
+            `,
+            variables: {
+                id: anilistId
+            }
+        });
+
+        const animeData = anilistResponse.data.data.Media;
+
+        // تأكد من وجود عنوان الأنمي
+        if (!animeData.title) {
+            throw new Error("لم يتم العثور على اسم الأنمي.");
+        }
+
+        const titles = [animeData.title.romaji, animeData.title.english, animeData.title.native].filter(Boolean);
+        const mainTitle = titles.shift();  // احصل على الاسم الأساسي (أول اسم)
+        const otherTitles = titles.map(title => `\`${title}\``).join('، ');  // الاسماء الأخرى
+
+        const status = translateStatus(animeData.status);  // ترجمة الحالة إلى العربية
+        const year = animeData.startDate.year;
+
+        // اسم الملف المؤقت
+        const tempFileName = `${uuidv4()}.mp4`;
+
+        // إعداد الرسالة مع الفيديو
+        const message = `
+📺 *اسم الأنمي:* \`${mainTitle}\`
+*أسماء أخرى:* \n${otherTitles}
+🎥 *الحالة:* ${status}
+📅 *سنة الإنتاج:* ${year}
+🕒 *الحلقة:* ${traceData.episode}
+⏱ *الوقت:* ${new Date(traceData.from * 1000).toISOString().substr(11, 8)}
+
+
+هذه ليس الانمي الذي تبحث عنه؟ \nأذن توجه هنا : \`https://shorturl.at/lDMF3\`\n\nقد تكون هذه النتائج غير صحيحة.`;
+
+        // إرسال رسالة للتأكيد على بدء معالجة الصورة
+        await ctx.telegram.editMessageText(initialMessage.chat.id, initialMessage.message_id, undefined, message, { parse_mode: 'Markdown' });
+
+        const videoUrl = traceData.video;
+        const videoStream = await axios({
+            url: videoUrl,
+            responseType: 'stream'
+        });
+
+        // حفظ الفيديو في ملف مؤقت
+        const videoPath = path.join(__dirname, tempFileName);
+        videoStream.data.pipe(fs.createWriteStream(videoPath));
+
+        // الانتظار حتى يتم حفظ الفيديو
+        await new Promise((resolve) => {
+            videoStream.data.on('end', resolve);
+        });
+
+        // إرسال الفيديو
+        await ctx.replyWithVideo({ source: videoPath });
+
+        // حذف الملف المؤقت
+        fs.unlinkSync(videoPath);
+
+    } catch (error) {
+        console.error('حدث خطأ: \nتواصل مع : @liM7mod', error.message);
+        await ctx.reply(`⚠️ حدث خطأ أثناء معالجة الصورة: ${error.message}\nتواصل مع : @liM7mod`);
+    } finally {
+        // إغلاق الجلسة بعد الانتهاء من معالجة الصورة
+        ctx.session.processing = false;
     }
+});
 
-    const watermarkText = encryptText('By : iAnime4day');
-
-    return `
-<!DOCTYPE html>
-<html lang="ar">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${animeName} - الحلقة ${episodeNumber}</title>
-    <style>
-        body {
-            background-color: #121212;
-            color: #fff;
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            text-align: center;
-            direction: rtl;
-            position: relative;
-        }
-        h1 {
-            margin-bottom: 20px;
-            font-size: 24px;
-            animation: fadeIn 1.5s ease-in-out;
-        }
-        .quality-button {
-            background-color: #1DB954;
-            border: none;
-            padding: 15px 30px;
-            margin: 10px;
-            color: #fff;
-            font-size: 16px;
-            cursor: pointer;
-            border-radius: 5px;
-            transition: background-color 0.3s, transform 0.3s;
-            animation: fadeInUp 1.5s ease-in-out;
-        }
-        .quality-button:hover {
-            background-color: #1ed760;
-            transform: translateY(-5px);
-        }
-        video {
-            width: 100%;
-            max-width: 800px;
-            margin-top: 20px;
-            animation: fadeIn 2s ease-in-out;
-        }
-        .dmca-button {
-            position: absolute;
-            bottom: 20px;
-            background-color: #FF5252;
-            border: none;
-            padding: 10px 20px;
-            color: #fff;
-            font-size: 14px;
-            cursor: pointer;
-            border-radius: 5px;
-            transition: background-color 0.3s;
-        }
-        .dmca-button:hover {
-            background-color: #ff6b6b;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        #loading-message {
-            position: absolute;
-            top: 100%;
-            left: 50%;
-            transform: translate(-50%, -100%);
-            font-size: 24px;
-            color: #fff;
-            display: none;
-            animation: fadeIn 1.5s ease-in-out;
-        }
-        #offline-message {
-            display: none;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 24px;
-            color: #fff;
-            text-align: center;
-        }
-        #offline-message.active {
-            display: block;
-        }
-        #watermark {
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
-            font-size: 14px;
-            color: rgba(255, 255, 255, 0.5);
-            pointer-events: none;
-        }
-    </style>
-</head>
-<body>
-    <h1>${animeName} - الحلقة ${episodeNumber}</h1>
-    <div id="offline-message">لا يتوفر اتصال بالإنترنت</div>
-    ${buttonsHtml}
-    <video id="player" controls></video>
-    <div id="loading-message">الرجاء الانتظار...</div>
-    <button class="dmca-button" onclick="window.open('https://telegra.ph/%D8%AA%D9%86%D8%A8%D9%8A%D9%87-%D8%AD%D9%82%D9%88%D9%82-%D8%A7%D9%84%D8%B7%D8%A8%D8%B9-%D9%88%D8%A7%D9%84%D9%86%D8%B4%D8%B1-08-05', '_blank')">DMCA</button>
-
-    <script>
-        ${obfuscateJavascript(`
-        function decryptLink(link) {
-            return atob(link);
-        }
-
-        function play(link, button) {
-            const player = document.getElementById('player');
-            const loadingMessage = document.getElementById('loading-message');
-
-            // وقف الفيديو الحالي قبل تحميل الفيديو الجديد
-            if (!player.paused) {
-                player.pause();
-            }
-
-            player.onpause = function() {
-                localStorage.setItem(link, player.currentTime);
-            };
-
-            player.src = decryptLink(link);
-            loadingMessage.style.display = 'block';
-            player.currentTime = localStorage.getItem(link) || 0;
-
-            player.oncanplay = function() {
-                loadingMessage.style.display = 'none';
-                player.play();  // التأكد من أن الفيديو جاهز قبل بدء التشغيل
-            };
-
-            const buttons = document.querySelectorAll('.quality-button');
-            buttons.forEach(btn => btn.classList.remove('active'));
-            button.classList.add('active');
-        }
-
-        function checkInternetConnection() {
-            const offlineMessage = document.getElementById('offline-message');
-            if (!navigator.onLine) {
-                offlineMessage.classList.add('active');
-            }
-        }
-
-        window.addEventListener('load', checkInternetConnection);
-        window.addEventListener('offline', () => {
-            document.getElementById('offline-message').classList.add('active');
-        });
-
-        document.addEventListener('DOMContentLoaded', function() {
-            const watermarkDiv = document.createElement('div');
-            watermarkDiv.id = 'watermark';
-            watermarkDiv.innerText = decryptLink('${watermarkText}');
-            document.body.appendChild(watermarkDiv);
-        });
-        `)}
-    </script>
-</body>
-</html>
-`;
-}
-
-// تعمية النص البرمجي باستخدام JavaScript Obfuscator
-function obfuscateJavascript(code) {
-    const obfuscatedCode = javascriptObfuscator.obfuscate(code, {
-        compact: true,
-        controlFlowFlattening: true,
-        deadCodeInjection: true,
-        debugProtection: true,
-        disableConsoleOutput: true,
-        identifierNamesGenerator: 'hexadecimal',
-        renameGlobals: false,
-        selfDefending: true,
-        stringArray: true,
-        stringArrayEncoding: ['rc4'],
-        stringArrayThreshold: 1,
-        transformObjectKeys: true,
-        unicodeEscapeSequence: false,
-    });
-    return obfuscatedCode.getObfuscatedCode();
-}
+// بدء تشغيل البوت
 keepAlive();
 bot.launch();
