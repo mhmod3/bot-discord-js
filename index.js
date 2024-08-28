@@ -251,7 +251,7 @@ bot.on('document', async (ctx) => {
     if (document.mime_type === 'image/gif') {
         handleMedia(ctx, document);
     } else {
-        ctx.reply("⚠️ الملف المرسل ليس صوره او فيديو او GIF.");
+        ctx.reply("⚠️ الملف المرسل ليس صوره او فيديو.");
     }
 });
 
@@ -263,7 +263,7 @@ bot.on('video', async (ctx) => {
     if (video.mime_type === 'video/mp4') {
         handleMedia(ctx, video);
     } else {
-        ctx.reply("⚠️ الملف المرسل ليس صوره او فيديو او GIF.");
+        ctx.reply("⚠️ الملف المرسل ليس صوره او فيديو.");
     }
 });
 keepAlive();
