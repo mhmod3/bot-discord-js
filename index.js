@@ -5,14 +5,27 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const keepAlive = require('./keep_alive.js');
 
-
-
 const BOT_TOKEN = process.env['token'];
 const bot = new Telegraf(BOT_TOKEN);
 
+const dataFilePath = path.join(__dirname, 'botData.json');
+
+// تحميل البيانات من الملف
+let botData = { usageCount: 0, ratings: { "5": 0, "4": 0, "3": 0, "2": 0, "1": 0 }, userRatings: {} };
+if (fs.existsSync(dataFilePath)) {
+    botData = JSON.parse(fs.readFileSync(dataFilePath));
+}
+
+let { usageCount, ratings, userRatings } = botData;
+
+// حفظ البيانات في الملف
+const saveData = () => {
+    fs.writeFileSync(dataFilePath, JSON.stringify({ usageCount, ratings, userRatings }, null, 2));
+};
+
 // إعدادات الجلسة
 bot.use(session({
-    defaultSession: () => ({ processing: false, lastUsed: 0, fileToProcess: null, messageToDelete: null })  // تهيئة الجلسة الافتراضية
+    defaultSession: () => ({ processing: false, fileToProcess: null, messageToDelete: null })
 }));
 
 // ترجمة الحالة إلى العربية
@@ -40,11 +53,9 @@ const isMovie = (type) => {
 const checkAspectRatio = (width, height) => {
     const ratio = width / height;
 
-    // قبول الصور بنسبة (16:9) أو (4:3) بفارق بسيط
     if (Math.abs(ratio - 16 / 9) <= 0.1) return '16:9';
     if (Math.abs(ratio - 4 / 3) <= 0.1) return '4:3';
 
-    // التحقق مما إذا كانت الصورة كبيرة أو صغيرة
     if (ratio > 16 / 9) return 'large';
     if (ratio < 4 / 3) return 'small';
 
@@ -56,42 +67,40 @@ bot.start((ctx) => {
     ctx.reply("مرحباً! الرجاء إرسال لقطة للأنمي أو ملف GIF أو فيديو MP4 وأنا سأحاول التعرف على ألانمي.");
 });
 
+// إعداد أزرار التقييم
+const ratingButtons = Markup.inlineKeyboard([
+    Markup.button.callback('1 ⭐', 'rate_1'),
+    Markup.button.callback('2 ⭐', 'rate_2'),
+    Markup.button.callback('3 ⭐', 'rate_3'),
+    Markup.button.callback('4 ⭐', 'rate_4'),
+    Markup.button.callback('5 ⭐', 'rate_5')
+]);
+
 // معالجة الصور، GIF، وفيديوهات MP4
 const handleMedia = async (ctx, file) => {
-    const currentTime = Date.now();
-
     try {
-        // التحقق من فترة الانتظار بين الاستخدامات
+        usageCount++; // زيادة عداد الاستخدام
+        saveData(); // حفظ البيانات بعد كل استخدام
+
         if (ctx.session.processing) {
             return ctx.reply("⚠️ جاري معالجة ملف بالفعل، الرجاء الانتظار قليلاً.");
         }
-        if (currentTime - ctx.session.lastUsed < 16000) { // 16 ثانية
-            return ctx.reply("⚠️ يجب الانتظار 16 ثانية بين كل استخدام وآخر.");
-        }
 
-        // الحصول على تفاصيل الملف
         const fileLink = await ctx.telegram.getFileLink(file.file_id);
-
-        // التحقق من حجم الملف
         const fileSizeInMB = file.file_size / (1024 * 1024);
         if (fileSizeInMB > 20) {
             throw new Error("حجم الملف أكبر من 20 ميغابايت.");
         }
 
-        // وضع علامة لبدء الجلسة ومعالجة الملف
         ctx.session.processing = true;
-        ctx.session.lastUsed = currentTime; // تحديث وقت آخر استخدام
 
-        // حذف رسالة الموافقة/الرفض إذا كانت موجودة
         if (ctx.session.messageToDelete) {
             await ctx.deleteMessage(ctx.session.messageToDelete);
-            ctx.session.messageToDelete = null; // مسح معرف الرسالة بعد حذفها
+            ctx.session.messageToDelete = null;
         }
 
-        // إرسال رسالة أولية
         const initialMessage = await ctx.reply("📸 جاري معالجة الملف...");
 
-        // استدعاء API موقع trace.moe
         const traceMoeResponse = await axios.get('https://api.trace.moe/search', {
             params: {
                 url: fileLink.href
@@ -100,14 +109,12 @@ const handleMedia = async (ctx, file) => {
 
         const traceData = traceMoeResponse.data.result[0];
 
-        // تأكد من أن الـ AniList ID موجود في الاستجابة
         if (!traceData.anilist) {
             throw new Error("لم يتم العثور على ID الخاص بـ AniList.\nتواصل مع : @liM7mod");
         }
 
         const anilistId = traceData.anilist;
 
-        // استدعاء API موقع AniList للحصول على تفاصيل الأنمي
         const anilistResponse = await axios.post('https://graphql.anilist.co', {
             query: `
             query ($id: Int) {
@@ -132,22 +139,14 @@ const handleMedia = async (ctx, file) => {
 
         const animeData = anilistResponse.data.data.Media;
 
-        // تأكد من وجود عنوان الأنمي
-        if (!animeData.title) {
-            throw new Error("لم يتم العثور على اسم الأنمي.");
-        }
-
         const titles = [animeData.title.romaji, animeData.title.english, animeData.title.native].filter(Boolean);
-        const mainTitle = titles.shift();  // احصل على الاسم الأساسي (أول اسم)
-        const otherTitles = titles.map(title => `\`${title}\``).join('، ');  // الاسماء الأخرى
+        const mainTitle = titles.shift();
+        const otherTitles = titles.map(title => `\`${title}\``).join(' ، ');
 
-        const status = translateStatus(animeData.status);  // ترجمة الحالة إلى العربية
+        const status = translateStatus(animeData.status);
         const year = animeData.startDate.year;
 
-        // التحقق مما إذا كان الأنمي فيلمًا
         const isAnimeMovie = isMovie(animeData.format);
-
-        // إعداد الرسالة مع الفيديو
         const episodeOrMovie = isAnimeMovie ? "فيلم" : `الحلقة: ${traceData.episode}`;
         const fromTime = new Date(traceData.from * 1000).toISOString().substr(11, 8);
         const toTime = new Date(traceData.to * 1000).toISOString().substr(11, 8);
@@ -162,10 +161,8 @@ const handleMedia = async (ctx, file) => {
 
 هذه ليس الانمي الذي تبحث عنه؟ \nأذن توجه هنا : \`https://shorturl.at/lDMF3\`\n\nقد تكون هذه النتائج غير صحيحة.`;
 
-        // إرسال رسالة للتأكيد على بدء معالجة الملف
         await ctx.telegram.editMessageText(initialMessage.chat.id, initialMessage.message_id, undefined, message, { parse_mode: 'Markdown' });
 
-        // تنزيل ومعالجة الفيديو إن وجد
         if (traceData.video) {
             const videoUrl = traceData.video;
             const tempFileName = `${uuidv4()}.mp4`;
@@ -174,19 +171,15 @@ const handleMedia = async (ctx, file) => {
                 responseType: 'stream'
             });
 
-            // حفظ الفيديو في ملف مؤقت
             const videoPath = path.join(__dirname, tempFileName);
             videoStream.data.pipe(fs.createWriteStream(videoPath));
 
-            // الانتظار حتى يتم حفظ الفيديو
             await new Promise((resolve) => {
                 videoStream.data.on('end', resolve);
             });
 
-            // إرسال الفيديو
             await ctx.replyWithVideo({ source: videoPath });
 
-            // حذف الملف المؤقت
             fs.unlinkSync(videoPath);
         }
 
@@ -194,7 +187,6 @@ const handleMedia = async (ctx, file) => {
         console.error('حدث خطأ: \nتواصل مع : @liM7mod', error.message);
         await ctx.reply(`⚠️ حدث خطأ أثناء معالجة الملف: ${error.message}\nتواصل مع : @liM7mod`);
     } finally {
-        // إغلاق الجلسة بعد الانتهاء من معالجة الملف
         ctx.session.processing = false;
     }
 };
@@ -212,10 +204,9 @@ bot.action('continue_processing', async (ctx) => {
 bot.action('cancel_processing', async (ctx) => {
     await ctx.answerCbQuery();
 
-    // حذف رسالة الموافقة/الرفض
     if (ctx.session.messageToDelete) {
         await ctx.deleteMessage(ctx.session.messageToDelete);
-        ctx.session.messageToDelete = null; // مسح معرف الرسالة بعد حذفها
+        ctx.session.messageToDelete = null;
     }
 
     ctx.reply("🚫 تم إلغاء العملية.");
@@ -225,9 +216,7 @@ bot.action('cancel_processing', async (ctx) => {
 
 // التعامل مع الصور
 bot.on('photo', async (ctx) => {
-    const photo = ctx.message.photo[ctx.message.photo.length - 1]; // اختيار أعلى دقة
-    const fileDetails = await ctx.telegram.getFile(photo.file_id);
-    const fileLink = await ctx.telegram.getFileLink(photo.file_id); // استرجاع الرابط المباشر للصورة
+    const photo = ctx.message.photo[ctx.message.photo.length - 1];
     const aspectRatio = checkAspectRatio(photo.width, photo.height);
 
     if (aspectRatio === '16:9' || aspectRatio === '4:3') {
@@ -247,7 +236,6 @@ bot.on('photo', async (ctx) => {
 bot.on('document', async (ctx) => {
     const { document } = ctx.message;
 
-    // التحقق من نوع الملف إذا كان GIF
     if (document.mime_type === 'image/gif') {
         handleMedia(ctx, document);
     } else {
@@ -259,12 +247,52 @@ bot.on('document', async (ctx) => {
 bot.on('video', async (ctx) => {
     const { video } = ctx.message;
 
-    // التحقق من نوع الملف إذا كان MP4
     if (video.mime_type === 'video/mp4') {
         handleMedia(ctx, video);
     } else {
         ctx.reply("⚠️ الملف المرسل ليس صوره او فيديو.");
     }
 });
+
+// تنفيذ الأمر /usage
+bot.command('info', (ctx) => {
+    const infoMessage = `
+📊 عدد مرات الاستخدام: ${usageCount}
+⭐ التقييمات:
+5 نجوم: ${ratings["5"]}
+4 نجوم: ${ratings["4"]}
+3 نجوم: ${ratings["3"]}
+2 نجوم: ${ratings["2"]}
+1 نجوم: ${ratings["1"]}\n\nالمطور : @LiM7mod\n\nقيمنا بـ :`;
+
+    ctx.replyWithMarkdown(infoMessage, ratingButtons);
+});
+
+// تنفيذ التقييمات
+bot.action(/rate_\d/, async (ctx) => {
+    const userId = ctx.from.id;
+    const newRating = ctx.match[0].split('_')[1];
+    const currentRating = userRatings[userId];
+
+    if (currentRating && currentRating !== newRating) {
+        // إذا قيم المستخدم مسبقاً، قم بإزالة التقييم القديم
+        ratings[currentRating]--;
+        userRatings[userId] = newRating;
+        ratings[newRating]++;
+        await ctx.answerCbQuery(`تم تحديث تقييمك إلى ${newRating}⭐`);
+    } else if (!currentRating) {
+        // إذا لم يقيم المستخدم مسبقاً
+        userRatings[userId] = newRating;
+        ratings[newRating]++;
+        await ctx.answerCbQuery(`شكراً لتقييمك بـ ${newRating}⭐`);
+    } else {
+        await ctx.answerCbQuery(`تقييمك بالفعل هو ${newRating}⭐`);
+    }
+
+    ctx.editMessageReplyMarkup();
+    saveData(); // حفظ البيانات بعد كل تقييم
+});
+
+// بدء البوت
 keepAlive();
 bot.launch();
