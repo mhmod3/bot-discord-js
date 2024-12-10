@@ -11,7 +11,7 @@ const client = new Client({
 
 // معلومات قناة التليجرام
 const telegramBotToken = process.env['tokentelegram'];
-const telegramChatId = '-1002494322661';
+const telegramChatId = '-1002422630321';
 
 // معرفات القنوات
 const mainChannelId = '1216862003453366332'; // قناة الحلقات
@@ -29,42 +29,33 @@ client.on('ready', async () => {
         console.error('Main channel not found!');
         return;
     }
-    if (mainChannel.type !== 'GUILD_TEXT' && mainChannel.type !== 'GUILD_NEWS') {
-        console.error('Main channel is not a text or announcements channel!');
-        return;
-    }
-
     if (!storageChannel) {
         console.error('Storage channel not found!');
         return;
     }
-    if (storageChannel.type !== 'GUILD_TEXT') {
-        console.error('Storage channel is not a text channel!');
-        return;
-    }
 
-    console.log('Listening for new messages...');
-    setInterval(() => checkNewMessages(mainChannel, storageChannel), 40000); // التحقق كل 40 ثانية
-});
+    console.log('Starting to poll for new messages...');
+    setInterval(async () => {
+        try {
+            // جلب آخر رسالة من قناة الحلقات
+            const messages = await mainChannel.messages.fetch({ limit: 1 });
+            const lastMessage = messages.first();
 
-async function checkNewMessages(mainChannel, storageChannel) {
-    try {
-        // قراءة آخر معرف رسالة من قناة التخزين
-        const storageMessages = await storageChannel.messages.fetch({ limit: 1 });
-        const lastMessage = storageMessages.first();
-        const lastMessageId = lastMessage ? lastMessage.content : null;
+            if (!lastMessage) return; // إذا لم تكن هناك رسائل
 
-        // جلب الرسائل الجديدة من قناة الحلقات
-        const messages = await mainChannel.messages.fetch({ limit: 10, after: lastMessageId });
+            // التحقق من التخزين إذا كانت الرسالة مكررة
+            const storageMessages = await storageChannel.messages.fetch({ limit: 1 });
+            const lastStoredMessage = storageMessages.first();
+            const lastStoredMessageId = lastStoredMessage ? lastStoredMessage.content : null;
 
-        if (messages.size === 0) {
-            console.log('No new messages to process.');
-            return;
-        }
+            if (lastMessage.id === lastStoredMessageId) {
+                console.log('No new messages.');
+                return;
+            }
 
-        for (const message of messages.values()) {
-            const modifiedMessage = parseMessage(message.content);
-            const attachment = message.attachments.first();
+            // معالجة الرسالة الجديدة
+            const modifiedMessage = parseMessage(lastMessage.content);
+            const attachment = lastMessage.attachments.first();
 
             if (attachment && attachment.contentType?.startsWith('image/')) {
                 await sendPhotoToTelegram(attachment.url, modifiedMessage);
@@ -72,15 +63,14 @@ async function checkNewMessages(mainChannel, storageChannel) {
                 await sendMessageToTelegram(modifiedMessage);
             }
 
-            // تحديث معرف آخر رسالة في قناة التخزين
-            await storageChannel.send(message.id);
+            // تخزين معرف الرسالة في قناة التخزين
+            await storageChannel.send(lastMessage.id);
+            console.log('New message sent to Telegram and stored.');
+        } catch (error) {
+            console.error('Error fetching or sending messages:', error);
         }
-
-        console.log('New messages processed and sent to Telegram.');
-    } catch (err) {
-        console.error('Error checking new messages:', err);
-    }
-}
+    }, 40000); // التحقق كل 40 ثانية
+});
 
 function parseMessage(message) {
     // حذف الجزء الخاص بـ "Previous Episodes" بكل الحالات الممكنة
