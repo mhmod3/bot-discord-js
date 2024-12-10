@@ -13,31 +13,33 @@ const client = new Client({
 const telegramBotToken = process.env['tokentelegram'];
 const telegramChatId = '-1002494322661';
 
-// معرفات الخادم والقنوات
-const guildId = '1197709956737142865';
-const mainChannelId = '1216862003453366332'; // القناة التي تحتوي على الرسائل الرئيسية
-const storageChannelId = '1315975590041354272'; // القناة التي تخزن معرف الرسالة
+// معرفات القنوات
+const mainChannelId = '1216862003453366332'; // قناة الحلقات
+const storageChannelId = '1315975590041354272'; // قناة التخزين
 
 client.on('ready', async () => {
     console.log(`Logged in as ${client.user.tag}`);
 
-    const guild = client.guilds.cache.get(guildId);
+    // جلب القنوات باستخدام client.channels.cache
+    const mainChannel = client.channels.cache.get(mainChannelId);
+    const storageChannel = client.channels.cache.get(storageChannelId);
 
-    if (!guild) {
-        console.error('Server not found!');
+    // تحقق من القنوات
+    if (!mainChannel) {
+        console.error('Main channel not found!');
+        return;
+    }
+    if (mainChannel.type !== 'GUILD_TEXT' && mainChannel.type !== 'GUILD_NEWS') {
+        console.error('Main channel is not a text or announcements channel!');
         return;
     }
 
-    const mainChannel = guild.channels.cache.get(mainChannelId);
-    const storageChannel = guild.channels.cache.get(storageChannelId);
-
-    if (!mainChannel || mainChannel.type !== 'GUILD_NEWS') {
-        console.error('Main channel not found or is not an announcements channel!');
+    if (!storageChannel) {
+        console.error('Storage channel not found!');
         return;
     }
-
-    if (!storageChannel || storageChannel.type !== 'GUILD_TEXT') {
-        console.error('Storage channel not found or is not a text channel!');
+    if (storageChannel.type !== 'GUILD_TEXT') {
+        console.error('Storage channel is not a text channel!');
         return;
     }
 
@@ -47,52 +49,36 @@ client.on('ready', async () => {
 
 async function checkNewMessages(mainChannel, storageChannel) {
     try {
-        const lastStoredMessageId = await getLastStoredMessageId(storageChannel);
-        const fetchedMessages = await mainChannel.messages.fetch({ limit: 1 });
-        const latestMessage = fetchedMessages.first();
+        // قراءة آخر معرف رسالة من قناة التخزين
+        const storageMessages = await storageChannel.messages.fetch({ limit: 1 });
+        const lastMessage = storageMessages.first();
+        const lastMessageId = lastMessage ? lastMessage.content : null;
 
-        if (!latestMessage || latestMessage.id === lastStoredMessageId) {
-            return; // لا توجد رسالة جديدة
+        // جلب الرسائل الجديدة من قناة الحلقات
+        const messages = await mainChannel.messages.fetch({ limit: 10, after: lastMessageId });
+
+        if (messages.size === 0) {
+            console.log('No new messages to process.');
+            return;
         }
 
-        const modifiedMessage = parseMessage(latestMessage.content);
-        const attachment = latestMessage.attachments.first();
+        for (const message of messages.values()) {
+            const modifiedMessage = parseMessage(message.content);
+            const attachment = message.attachments.first();
 
-        if (attachment && attachment.contentType?.startsWith('image/')) {
-            await sendPhotoToTelegram(attachment.url, modifiedMessage);
-        } else {
-            await sendMessageToTelegram(modifiedMessage);
+            if (attachment && attachment.contentType?.startsWith('image/')) {
+                await sendPhotoToTelegram(attachment.url, modifiedMessage);
+            } else {
+                await sendMessageToTelegram(modifiedMessage);
+            }
+
+            // تحديث معرف آخر رسالة في قناة التخزين
+            await storageChannel.send(message.id);
         }
 
-        await updateLastStoredMessageId(storageChannel, latestMessage.id);
+        console.log('New messages processed and sent to Telegram.');
     } catch (err) {
-        console.error('Error checking or sending new messages:', err);
-    }
-}
-
-async function getLastStoredMessageId(storageChannel) {
-    try {
-        const fetchedMessages = await storageChannel.messages.fetch({ limit: 1 });
-        const lastMessage = fetchedMessages.first();
-        return lastMessage ? lastMessage.content.trim() : null;
-    } catch (err) {
-        console.error('Error fetching last stored message ID:', err);
-        return null;
-    }
-}
-
-async function updateLastStoredMessageId(storageChannel, messageId) {
-    try {
-        const fetchedMessages = await storageChannel.messages.fetch({ limit: 1 });
-        const lastMessage = fetchedMessages.first();
-
-        if (lastMessage) {
-            await lastMessage.edit(messageId); // تحديث الرسالة الحالية
-        } else {
-            await storageChannel.send(messageId); // إنشاء رسالة جديدة إذا لم تكن موجودة
-        }
-    } catch (err) {
-        console.error('Error updating last stored message ID:', err);
+        console.error('Error checking new messages:', err);
     }
 }
 
@@ -106,6 +92,7 @@ function parseMessage(message) {
     message = message.replace(/<:mega:\d+>/g, 'Mega :');
     message = message.replace(/\*\*>\*\*/g, '>'); // إزالة التنسيقات العريضة إذا وجدت
 
+    // إعادة النص المعدل
     return message;
 }
 
