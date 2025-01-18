@@ -4,8 +4,8 @@ const keepAlive = require('./keep_alive.js');
 
 // متغيرات البيئة
 const TOKEN = process.env['token'];
-const GUILD_ID = 1134754953425072148; // معرف السيرفر
-const CHANNEL_ID = 1330104707208974359; // معرف القناة الصوتية
+const GUILD_ID = 1006276395921575996; // معرف السيرفر
+const CHANNEL_ID = 1059820320745332746; // معرف القناة الصوتية
 
 const client = new Client({ checkUpdate: false });
 
