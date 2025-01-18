@@ -1,27 +1,25 @@
 {
-  "name": "anime-telegram-bot",
-  "version": "1.0.0",
-  "description": "Telegram bot for fetching anime episodes",
+  "name": "selfbot",
+  "version": "1.0",
+  "description": "bot",
   "main": "index.js",
-  "dependencies": {
-    "axios": "^0.24.0",
-    "cheerio": "^1.0.0-rc.10",
-    "express": "^4.17.2",
-    "image-downloader": "^4.3.0",
-    "nanoid": "^4.0.0",
-    "package.json": "^2.0.1",
-    "pdf-lib": "^1.17.1",
-    "selfbot.js-v13": "^13.12.0",
-    "pdfkit": "^0.15.0",
-    "puppeteer": "^22.13.1",
-    "telegraf": "^4.16.3",
-    "fast-levenshtein": "^3.0.0",
-    "uuid": "^8.3.2",
-    "javascript-obfuscator": "^4.1.1"
-  },
   "scripts": {
     "start": "node index.js"
   },
-  "author": "admin",
-  "license": "ISC"
+  "author": "1mgr007",
+  "license": "MIT",
+  "dependencies": {
+    "node-pre-gyp": "^0.17.0",
+    "@mapbox/node-pre-gyp": "^1.0.9",
+    "@discordjs/opus": "^0.8.0",
+    "@discordjs/voice": "^0.10.0",
+    "discord.js-selfbot-v13": "^2.3.8",
+    "ffmpeg-static": "^5.0.2",
+    "prism-media": "^1.3.4",
+    "sodium": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=16.6.0",
+    "npm": ">=7.0.0"
+  }
 }
