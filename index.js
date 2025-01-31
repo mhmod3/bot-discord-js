@@ -5,7 +5,7 @@ import keepAlive from './keep_alive.js';
 // إنشاء البوت
 const bot = new Telegraf(process.env['token']);
 
-// إنشاء الكائن الخاص بالـ Scraper
+// الوصول إلى Scraper من HiAnime
 const Scraper = aniwatch.HiAnime.Scraper;
 const hianime = new Scraper();
 
