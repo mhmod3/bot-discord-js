@@ -1,8 +1,8 @@
 const { exec } = require('child_process');
-
+const { Telegraf } = require('telegraf');
 
 // تثبيت المكتبات المطلوبة إذا كانت غير مثبتة
-exec('npm install telegraf aniwatch', (err, stdout, stderr) => {
+exec('npm install telegraf aniwatch', async (err, stdout, stderr) => {
   if (err) {
     console.error(`Error: ${err.message}`);
     return;
@@ -12,10 +12,12 @@ exec('npm install telegraf aniwatch', (err, stdout, stderr) => {
     return;
   }
   console.log(`stdout: ${stdout}`);
-  const { Telegraf } = require('telegraf');
-  const aniwatch = require('aniwatch');
+
+  // تحميل مكتبة aniwatch ديناميكيًا
+  const aniwatch = await import('aniwatch');
+
   // بعد تثبيت المكتبات، يمكنك إضافة الكود الخاص بك هنا
-  const bot = new Telegraf('7524565250:AAEdYw9Q9H_5WtGXIfUxCTl8K3ZpA49a4so');
+  const bot = new Telegraf('توكن البوت هنا');
   const hianime = new aniwatch.HiAnime.Scraper();
 
   bot.on('text', (ctx) => {
