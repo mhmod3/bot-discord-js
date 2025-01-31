@@ -2,7 +2,7 @@ import express from 'express';
 import { Telegraf } from 'telegraf';
 import * as aniwatch from 'aniwatch';
 
-const BOT_TOKEN = '7524565250:AAEdYw9Q9H_5WtGXIfUxCTl8K3ZpA49a4so';
+const BOT_TOKEN = '';
 const WEBHOOK_URL = 'https://bot-discord-js-4xqg.onrender.com'; // استبدل باسم تطبيقك على Render
 
 const bot = new Telegraf(BOT_TOKEN);
