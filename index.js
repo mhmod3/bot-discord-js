@@ -1,5 +1,5 @@
 import { Telegraf } from 'telegraf';
-import aniwatch from 'aniwatch';
+import { HiAnime } from 'aniwatch';
 import keepAlive from './keep_alive.js';
 
 // إنشاء البوت
@@ -81,7 +81,8 @@ ${data.sources.map(source => `Type: ${source.type}, URL: ${source.url}`).join('\
     });
 
   // تأكيد الضغط على الزر
-  ctx.answerCbQuery(); // هذا هو الكود الصحيح
+  ctx.answerCbQuery();
 });
+
 keepAlive();
 bot.launch();
