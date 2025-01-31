@@ -1,8 +1,17 @@
 import { Telegraf } from 'telegraf';
-import { HiAnime } from 'aniwatch';
+import * as aniwatch from 'aniwatch';
 
-const bot = new Telegraf('توكن البوت هنا');
+console.log(aniwatch); // تحقق من الهيكل لمعرفة كيفية استدعاء Scraper
+
+const HiAnime = aniwatch.default?.HiAnime || aniwatch.HiAnime;
+
+if (!HiAnime) {
+  console.error('لم يتم العثور على HiAnime في aniwatch');
+  process.exit(1);
+}
+
 const hianime = new HiAnime.Scraper();
+const bot = new Telegraf('توكن البوت هنا');
 
 bot.on('text', async (ctx) => {
   const url = ctx.message.text;
