@@ -1,4 +1,5 @@
 {
+  "type": "module",
   "name": "telegram-bot",
   "version": "1.0.0",
   "description": "A Telegram bot that extracts anime episode information",
