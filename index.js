@@ -1,5 +1,5 @@
 import { Telegraf } from 'telegraf';
-import * as HiAnime from 'aniwatch';
+import aniwatch from 'aniwatch';
 import keepAlive from './keep_alive.js';
 
 // إنشاء البوت
