@@ -1,4 +1,5 @@
 import { exec } from 'child_process';
+
 // تثبيت المكتبات المطلوبة إذا كانت غير مثبتة
 exec('npm install telegraf aniwatch', (err, stdout, stderr) => {
   if (err) {
@@ -10,6 +11,7 @@ exec('npm install telegraf aniwatch', (err, stdout, stderr) => {
     return;
   }
   console.log(`stdout: ${stdout}`);
+
   import { Telegraf } from 'telegraf';
   import aniwatch from 'aniwatch';
 
