@@ -20,4 +20,6 @@ bot.on('text', async (ctx) => {
   }
 });
 
-bot.launch();
+bot.launch({
+  dropPendingUpdates: true, // يمنع التعارض في التحديثات القديمة
+});
