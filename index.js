@@ -1,7 +1,7 @@
 import { Telegraf } from 'telegraf';
 import * as aniwatch from 'aniwatch';
 
-const bot = new Telegraf('توكن البوت هنا');
+const bot = new Telegraf('7524565250:AAEdYw9Q9H_5WtGXIfUxCTl8K3ZpA49a4so');
 
 bot.on('text', async (ctx) => {
   const url = ctx.message.text;
