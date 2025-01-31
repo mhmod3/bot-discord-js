@@ -3,7 +3,7 @@ import { HiAnime } from 'aniwatch';
 const keepAlive = require('./keep_alive.js');
 
 // إنشاء البوت
-const bot = new Telegraf(process.env['token']);
+const bot = new Telegraf('YOUR_TELEGRAM_BOT_API_TOKEN');
 
 // إنشاء الكائن الخاص بالـ Scraper
 const hianime = new HiAnime.Scraper();
@@ -80,11 +80,8 @@ ${data.sources.map(source => `Type: ${source.type}, URL: ${source.url}`).join('\
       ctx.reply(`Error: ${err.message}`);
     });
 
-  // 
-  تأكيد الضغط على الزر
-  ctx.answerCbQuery();
+  // تأكيد الضغط على الزر
+  ctx.answerCbQuery(); // هذا هو الكود الصحيح
 });
-
-//بدء البوت
 keepAlive();
 bot.launch();
