@@ -1,5 +1,5 @@
 import { Telegraf } from 'telegraf';
-import { HiAnime } from 'aniwatch';
+import * as HiAnime from 'aniwatch';
 const keepAlive = require('./keep_alive.js');
 
 // إنشاء البوت
