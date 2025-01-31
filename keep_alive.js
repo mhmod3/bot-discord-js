@@ -1,4 +1,5 @@
-const express = require("express");
+import express from "express";  // إذا كنت تستخدم import في المشروع
+
 const server = express();
 
 server.all("/", (req, res) => {
@@ -11,4 +12,4 @@ function keepAlive() {
   });
 }
 
-module.exports = keepAlive;
+export default keepAlive;  // استخدام export default
