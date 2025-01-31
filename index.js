@@ -1,5 +1,6 @@
 import { Telegraf } from 'telegraf';
 import { HiAnime } from 'aniwatch';
+const keepAlive = require('./keep_alive.js');
 
 // إنشاء البوت
 const bot = new Telegraf(process.env['token']);
@@ -79,9 +80,11 @@ ${data.sources.map(source => `Type: ${source.type}, URL: ${source.url}`).join('\
       ctx.reply(`Error: ${err.message}`);
     });
 
-  // تأكيد الضغط على الزر
+  // 
+  تأكيد الضغط على الزر
   ctx.answerCbQuery();
 });
 
-// بدء البوت
+//بدء البوت
+keepAlive();
 bot.launch();
