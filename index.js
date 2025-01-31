@@ -1,9 +1,9 @@
 import { Telegraf } from 'telegraf';
 import * as HiAnime from 'aniwatch';
-const keepAlive = require('./keep_alive.js');
+import keepAlive from './keep_alive.js';
 
 // إنشاء البوت
-const bot = new Telegraf('YOUR_TELEGRAM_BOT_API_TOKEN');
+const bot = new Telegraf(process.env['token']);
 
 // إنشاء الكائن الخاص بالـ Scraper
 const hianime = new HiAnime.Scraper();
