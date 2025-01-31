@@ -1,12 +1,13 @@
 import { Telegraf } from 'telegraf';
-import aniwatch from 'aniwatch';
+import { HiAnime } from 'aniwatch';
 import keepAlive from './keep_alive.js';
 
 // إنشاء البوت
 const bot = new Telegraf(process.env['token']);
 
 // إنشاء الكائن الخاص بالـ Scraper
-const hianime = new aniwatch.HiAnime.Scraper();
+const hianime = new HiAnime.Scraper();
+
 // التعامل مع الرسائل الواردة
 bot.on('text', (ctx) => {
   const text = ctx.message.text;
