@@ -9,8 +9,6 @@ const bot = new Telegraf(process.env['token']);
 const Scraper = aniwatch.HiAnime.Scraper;
 const hianime = new Scraper();
 
-
-
 // التعامل مع الرسائل الواردة
 bot.on('text', (ctx) => {
   const text = ctx.message.text;
