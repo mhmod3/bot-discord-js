@@ -6,7 +6,7 @@ import keepAlive from './keep_alive.js';
 const bot = new Telegraf(process.env['token']);
 
 // الوصول إلى Scraper من HiAnime
-const Scraper = aniwatch.HiAnime.Scraper;
+const { Scraper } = aniwatch.HiAnime;
 const hianime = new Scraper();
 
 // التعامل مع الرسائل الواردة
