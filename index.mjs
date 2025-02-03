@@ -1,13 +1,11 @@
 import { Telegraf, Markup } from 'telegraf';
 import { HiAnime } from 'aniwatch';
 import express from 'express';
-import dotenv from 'dotenv';
 import keepAlive from './keep_alive.js';  // استيراد خادم keep-alive
 
-dotenv.config();
 
 // إنشاء بوت التليجرام
-const bot = new Telegraf(process.env.token); // استبدل بـ التوكن من البيئة
+const bot = new Telegraf("7524565250:AAEE0v-IRhkTotEPtoMrktQCqrRWUhlZe0g"); // استبدل بـ التوكن من البيئة
 const hianime = new HiAnime.Scraper();
 
 // إيموجي لتحسين الرسائل
