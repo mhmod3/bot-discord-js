@@ -1,4 +1,4 @@
-import { HiAnime } from "aniwatch";
+import * as HiAnime from "aniwatch";
 
 const hianime = new HiAnime.Scraper();
 
