@@ -1,14 +1,14 @@
 {
   "name": "aniwatch-project",
   "version": "1.0.0",
-  "description": "Anime episode scraper using aniwatch",
+  "description": "Anime episode scraper using aniwatch and Telegraf",
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "init-project": "npm init -y && npm install aniwatch",
     "start": "node index.js"
   },
   "dependencies": {
-    "aniwatch": "^1.0.0"
+    "aniwatch": "^1.0.0",
+    "telegraf": "^4.7.0"
   }
 }
