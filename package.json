@@ -1,4 +1,14 @@
-"scripts": {
-  "init-project": "npm init -y && npm install aniwatch",
-  "start": "npm install aniwatch && node index.js"
+{
+  "name": "aniwatch-project",
+  "version": "1.0.0",
+  "description": "Anime episode scraper using aniwatch",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "init-project": "npm init -y && npm install aniwatch",
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "aniwatch": "^1.0.0"
+  }
 }
