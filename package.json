@@ -1,20 +1,4 @@
-{
-  "name": "anime-scraper",
-  "version": "1.0.0",
-  "description": "A simple anime scraper using aniwatch library",
-  "main": "index.mjs",
-  "type": "module",
-  "scripts": {
-    "start": "node index.mjs"
-  },
-  "dependencies": {
-    "aniwatch": "^1.0.2",
-    "readline-sync": "^1.4.10",
-    "fs": "0.0.1-security"
-  },
-  "engines": {
-    "node": ">=14.0.0"
-  },
-  "author": "",
-  "license": "ISC"
+"scripts": {
+  "init-project": "npm init -y && npm install aniwatch",
+  "start": "npm install aniwatch && node index.js"
 }
