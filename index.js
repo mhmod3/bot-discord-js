@@ -1,6 +1,6 @@
 import("aniwatch")
-  .then(({ getAnimeEpisodeSources }) => {
-    import { Telegraf } from 'telegraf';
+  .then(async ({ getAnimeEpisodeSources }) => {
+    const { Telegraf } = await import('telegraf'); // استخدم dynamic import لكل المكتبات
 
     // توكن البوت من بوت فاذر
     const BOT_TOKEN = '7524565250:AAEE0v-IRhkTotEPtoMrktQCqrRWUhlZe0g';
