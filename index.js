@@ -1,7 +1,6 @@
 import("aniwatch")
-  .then((aniwatch) => {
-    const { getAnimeEpisodeSources } = aniwatch;
-    const { Telegraf } = require('telegraf');
+  .then(({ getAnimeEpisodeSources }) => {
+    import { Telegraf } from 'telegraf';
 
     // توكن البوت من بوت فاذر
     const BOT_TOKEN = '7524565250:AAEE0v-IRhkTotEPtoMrktQCqrRWUhlZe0g';
