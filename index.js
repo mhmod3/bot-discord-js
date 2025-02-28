@@ -25,11 +25,25 @@ import("aniwatch")
 
         try {
           const episodeData = await getAnimeEpisodeSources(episodeId, 'hd-1', 'sub');
+          const sources = episodeData.sources || []; // التأكد من وجود المصادر
+          let sourcesList = '';
+
+          // جمع روابط m3u8 من المصادر إذا كانت موجودة
+          sources.forEach((source, index) => {
+            if (source.file && source.file.includes('m3u8')) {
+              sourcesList += `\n${index + 1}. [رابط m3u8](${source.file})`;
+            }
+          });
+
+          if (!sourcesList) {
+            sourcesList = '❌ لم أتمكن من إيجاد رابط m3u8.';
+          }
+
           const response = `
 📺 *معلومات الحلقة*:
 - 🎥 *رابط الحلقة:* ${text}
 - 🔗 *ID الحلقة:* ${episodeId}
-- 📡 *المصادر:* ${JSON.stringify(episodeData, null, 2)}
+- 📡 *المصادر:* ${sourcesList}
 `;
 
           ctx.reply(response, { parse_mode: 'Markdown' });
