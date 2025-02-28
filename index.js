@@ -1,42 +1,29 @@
-import { Telegraf } from "telegraf";
-import { getAnimeEpisodeSources } from "aniwatch";
+const { Telegraf } = require("telegraf");
+const fetch = require("node-fetch");
 
 const bot = new Telegraf("7524565250:AAEE0v-IRhkTotEPtoMrktQCqrRWUhlZe0g");
 
-bot.start((ctx) => {
-  ctx.reply("🔹 أرسل لي رابط الحلقة وسأجلب لك المعلومات.");
-});
-
 bot.on("text", async (ctx) => {
-  try {
     const message = ctx.message.text;
-    
-    // استخراج ID الحلقة بشكل دقيق
     const match = message.match(/watch\/([^?]+)\?ep=(\d+)/);
-    if (!match) return ctx.reply("❌ يرجى إرسال رابط صحيح!");
 
-    const episodeID = `${match[1]}?ep=${match[2]}`;
-    ctx.reply(`📺 جاري جلب البيانات للحلقة: ${episodeID}...`);
-
-    // جلب المصادر
-    let sources = await getAnimeEpisodeSources(episodeID);
-    
-    // التأكد أن `sources` ليست فارغة
-    if (!sources || !sources.sources || sources.sources.length === 0) {
-      ctx.reply("⚠️ لم يتم العثور على أي مصادر لهذه الحلقة. قد يكون هناك مشكلة في API أو الحلقة غير متوفرة.");
-      return;
+    if (!match) {
+        return ctx.reply("❌ رابط غير صالح. يرجى إرسال رابط حلقة من hianime.to.");
     }
 
-    console.log(sources); // طباعة البيانات في الكونسول
+    const episodeId = `${match[1]}?ep=${match[2]}`;
 
-    // إرسال النتيجة كما هي
-    ctx.reply(`📢 مصادر الحلقة:\n\`\`\`\n${JSON.stringify(sources, null, 2)}\n\`\`\``, { parse_mode: "Markdown" });
+    try {
+        const aniwatch = await import("aniwatch");
+        const { getAnimeEpisodeSources } = aniwatch;
+        const data = await getAnimeEpisodeSources(episodeId, "hd-1", "sub");
 
-  } catch (error) {
-    console.error("❌ خطأ:", error);
-    ctx.reply("❌ حدث خطأ أثناء جلب المعلومات.");
-  }
+        ctx.reply(`✅ تم استخراج البيانات:\n\n🔹 **المصدر:** ${data.source}\n🔹 **الجودة:** HD`);
+    } catch (error) {
+        console.error(error);
+        ctx.reply("❌ حدث خطأ أثناء جلب المعلومات.");
+    }
 });
 
-// تشغيل البوت
-bot.launch().then(() => console.log("✅ البوت يعمل بنجاح!"));
+bot.launch();
+console.log("✅ البوت يعمل...");
