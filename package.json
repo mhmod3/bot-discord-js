@@ -8,7 +8,7 @@
     "start": "node index.js"
   },
   "dependencies": {
-    "express": "^4.18.2",  // تثبيت express بدلاً من telegraf
+    "express": "^4.18.2",
     "aniwatch": "^1.0.0"
   }
 }
