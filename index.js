@@ -1,29 +1,50 @@
-const { Telegraf } = require("telegraf");
-const fetch = require("node-fetch");
+import("aniwatch")
+  .then((aniwatch) => {
+    const { getAnimeEpisodeSources } = aniwatch;
+    const { Telegraf } = require('telegraf');
 
-const bot = new Telegraf("7524565250:AAEE0v-IRhkTotEPtoMrktQCqrRWUhlZe0g");
+    // توكن البوت من بوت فاذر
+    const BOT_TOKEN = '7524565250:AAEE0v-IRhkTotEPtoMrktQCqrRWUhlZe0g';
+    const bot = new Telegraf(BOT_TOKEN);
 
-bot.on("text", async (ctx) => {
-    const message = ctx.message.text;
-    const match = message.match(/watch\/([^?]+)\?ep=(\d+)/);
-
-    if (!match) {
-        return ctx.reply("❌ رابط غير صالح. يرجى إرسال رابط حلقة من hianime.to.");
+    // دالة استخراج ID الحلقة من الرابط
+    function extractEpisodeId(url) {
+      const match = url.match(/watch\/([^?]+)\?ep=(\d+)/);
+      return match ? `${match[1]}?ep=${match[2]}` : null;
     }
 
-    const episodeId = `${match[1]}?ep=${match[2]}`;
+    // استقبال الرسالة من المستخدم
+    bot.on('text', async (ctx) => {
+      const text = ctx.message.text;
 
-    try {
-        const aniwatch = await import("aniwatch");
-        const { getAnimeEpisodeSources } = aniwatch;
-        const data = await getAnimeEpisodeSources(episodeId, "hd-1", "sub");
+      if (text.startsWith('https://hianime.to/watch/')) {
+        const episodeId = extractEpisodeId(text);
 
-        ctx.reply(`✅ تم استخراج البيانات:\n\n🔹 **المصدر:** ${data.source}\n🔹 **الجودة:** HD`);
-    } catch (error) {
-        console.error(error);
-        ctx.reply("❌ حدث خطأ أثناء جلب المعلومات.");
-    }
-});
+        if (!episodeId) {
+          return ctx.reply('❌ لم أتمكن من استخراج ID الحلقة، تأكد من صحة الرابط.');
+        }
 
-bot.launch();
-console.log("✅ البوت يعمل...");
+        try {
+          const episodeData = await getAnimeEpisodeSources(episodeId, 'hd-1', 'sub');
+          const response = `
+📺 *معلومات الحلقة*:
+- 🎥 *رابط الحلقة:* ${text}
+- 🔗 *ID الحلقة:* ${episodeId}
+- 📡 *المصادر:* ${JSON.stringify(episodeData, null, 2)}
+`;
+
+          ctx.reply(response, { parse_mode: 'Markdown' });
+        } catch (err) {
+          ctx.reply('❌ حدث خطأ أثناء جلب المعلومات.');
+          console.error(err);
+        }
+      } else {
+        ctx.reply('⚠️ أرسل رابطًا صحيحًا من Hianime.');
+      }
+    });
+
+    // تشغيل البوت
+    bot.launch();
+
+  })
+  .catch((err) => console.error("Error loading aniwatch:", err));
