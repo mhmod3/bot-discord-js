@@ -38,8 +38,5 @@ bot.on("text", async (ctx) => {
   }
 });
 
-// إيقاف أي تشغيل سابق
-bot.stop();
-
 // تشغيل البوت
 bot.launch().then(() => console.log("✅ البوت يعمل بنجاح!"));
