@@ -3,7 +3,7 @@ import("aniwatch")
     const { Telegraf } = await import('telegraf'); // استخدم dynamic import لكل المكتبات
 
     // توكن البوت من بوت فاذر
-    const BOT_TOKEN = '7524565250:AAEE0v-IRhkTotEPtoMrktQCqrRWUhlZe0g';
+    const BOT_TOKEN = '7524565250:AAHF-D5mCEObXanOQgMe_UEKnoWnAfRb9tw';
     const bot = new Telegraf(BOT_TOKEN);
 
     // دالة استخراج ID الحلقة من الرابط
