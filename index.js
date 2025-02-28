@@ -1,63 +1,41 @@
-import("aniwatch")
-  .then(async ({ getAnimeEpisodeSources }) => {
-    const { Telegraf } = await import('telegraf'); // استخدم dynamic import لكل المكتبات
+const express = require('express');
+const app = express();
+const port = process.env.PORT || 3000;
 
-    // توكن البوت من بوت فاذر
-    const BOT_TOKEN = '7524565250:AAHF-D5mCEObXanOQgMe_UEKnoWnAfRb9tw';
-    const bot = new Telegraf(BOT_TOKEN);
+// لتفعيل الوصول من المتصفح (CORS)
+const cors = require('cors');
+app.use(cors());
 
-    // دالة استخراج ID الحلقة من الرابط
-    function extractEpisodeId(url) {
-      const match = url.match(/watch\/([^?]+)\?ep=(\d+)/);
-      return match ? `${match[1]}?ep=${match[2]}` : null;
-    }
+app.use(express.static('public'));  // لإظهار ملف HTML
 
-    // استقبال الرسالة من المستخدم
-    bot.on('text', async (ctx) => {
-      const text = ctx.message.text;
+// نقطة النهاية لطلب حلقة الأنمي
+app.get('/api/episode', (req, res) => {
+  const { episodeId } = req.query;
 
-      if (text.startsWith('https://hianime.to/watch/')) {
-        const episodeId = extractEpisodeId(text);
+  if (!episodeId) {
+    return res.status(400).send({ error: 'Missing episodeId' });
+  }
 
-        if (!episodeId) {
-          return ctx.reply('❌ لم أتمكن من استخراج ID الحلقة، تأكد من صحة الرابط.');
-        }
+  // استدعاء المكتبة بشكل ديناميكي
+  import("aniwatch")
+    .then((aniwatch) => {
+      const { getAnimeEpisodeSources } = aniwatch;
 
-        try {
-          const episodeData = await getAnimeEpisodeSources(episodeId, 'hd-1', 'sub');
-          const sources = episodeData.sources || []; // التأكد من وجود المصادر
-          let sourcesList = '';
-
-          // جمع روابط m3u8 من المصادر إذا كانت موجودة
-          sources.forEach((source, index) => {
-            if (source.file && source.file.includes('m3u8')) {
-              sourcesList += `\n${index + 1}. [رابط m3u8](${source.file})`;
-            }
-          });
-
-          if (!sourcesList) {
-            sourcesList = '❌ لم أتمكن من إيجاد رابط m3u8.';
-          }
-
-          const response = `
-📺 *معلومات الحلقة*:
-- 🎥 *رابط الحلقة:* ${text}
-- 🔗 *ID الحلقة:* ${episodeId}
-- 📡 *المصادر:* ${sourcesList}
-`;
-
-          ctx.reply(response, { parse_mode: 'Markdown' });
-        } catch (err) {
-          ctx.reply('❌ حدث خطأ أثناء جلب المعلومات.');
-          console.error(err);
-        }
-      } else {
-        ctx.reply('⚠️ أرسل رابطًا صحيحًا من Hianime.');
-      }
+      getAnimeEpisodeSources(episodeId, "hd-1", "sub")
+        .then((data) => {
+          res.json(data);  // إرسال البيانات إلى العميل
+        })
+        .catch((err) => {
+          console.error("Error fetching episode data:", err);
+          res.status(500).send({ error: 'Failed to fetch episode data' });
+        });
+    })
+    .catch((err) => {
+      console.error("Error loading aniwatch:", err);
+      res.status(500).send({ error: 'Failed to load aniwatch' });
     });
+});
 
-    // تشغيل البوت
-    bot.launch();
-
-  })
-  .catch((err) => console.error("Error loading aniwatch:", err));
+app.listen(port, () => {
+  console.log(`Server running at https://bot-discord-js-4xqg.onrender.com`);
+});
