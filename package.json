@@ -1,14 +1,14 @@
 {
-  "name": "aniwatch-project",
+  "name": "aniwatch-bot",
   "version": "1.0.0",
-  "description": "Anime episode scraper using aniwatch and Telegraf",
+  "description": "بوت تيليغرام لجلب مصادر الحلقات من aniwatch",
   "main": "index.js",
   "type": "module",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "aniwatch": "^1.0.0",
-    "telegraf": "^4.7.0"
+    "telegraf": "^4.12.2",
+    "aniwatch": "^1.0.0"
   }
 }
