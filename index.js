@@ -1,34 +1,37 @@
-import { getAnimeEpisodeSources } from 'aniwatch';
-import { Telegraf } from 'telegraf';
+import { Telegraf } from "telegraf";
+import { getAnimeEpisodeSources } from "aniwatch";
 
-// استبدل هذا بـ Token البوت الخاص بك من BotFather
-const bot = new Telegraf("7524565250:AAEE0v-IRhkTotEPtoMrktQCqrRWUhlZe0g");
+const BOT_TOKEN = "7524565250:AAEE0v-IRhkTotEPtoMrktQCqrRWUhlZe0g";
+const bot = new Telegraf(BOT_TOKEN);
 
-// استماع للرسائل الواردة
-bot.on("text", (ctx) => {
-  const messageText = ctx.message.text;
+// دالة لاستخراج ID الحلقة من الرابط
+function extractEpisodeId(url) {
+  const match = url.match(/watch\/(.*?)$/);
+  return match ? match[1] : null;
+}
 
-  // تحقق إذا كانت الرسالة تحتوي على رابط الحلقة
-  const regex = /https:\/\/hianime\.to\/watch\/([a-zA-Z0-9\-]+(\?ep=\d+))/;
-  const match = messageText.match(regex);
+bot.start((ctx) => {
+  ctx.reply("أرسل رابط الحلقة للحصول على المصادر.");
+});
 
-  if (match) {
-    const episodeId = match[1];  // استخراج الـ id مثل "blue-lock-17889?ep=94951"
+bot.on("text", async (ctx) => {
+  const episodeUrl = ctx.message.text;
+  const episodeId = extractEpisodeId(episodeUrl);
 
-    // جلب مصادر الحلقة باستخدام الـ id
-    getAnimeEpisodeSources(episodeId, "hd-1", "sub")
-      .then((data) => {
-        // إرسال المعلومات عبر تليجرام
-        const response = `مصادر الحلقة:\n${JSON.stringify(data, null, 2)}`;
-        ctx.reply(response);
-      })
-      .catch((err) => {
-        ctx.reply(`حدث خطأ أثناء جلب البيانات: ${err.message}`);
-      });
-  } else {
-    ctx.reply("من فضلك أرسل رابط حلقة بشكل صحيح (مثال: https://hianime.to/watch/blue-lock-17889?ep=94951).");
+  if (!episodeId) {
+    return ctx.reply("❌ الرابط غير صحيح. تأكد من إرساله بشكل كامل.");
+  }
+
+  ctx.reply("⏳ جاري جلب المصادر...");
+
+  try {
+    const sources = await getAnimeEpisodeSources(episodeId, "hd-1", "sub");
+    console.log("مصادر الحلقة:", sources);
+    ctx.reply(`\`\`\`json\n${JSON.stringify(sources, null, 2)}\n\`\`\``);
+  } catch (error) {
+    console.error("خطأ أثناء جلب المصادر:", error);
+    ctx.reply("❌ حدث خطأ أثناء جلب المصادر.");
   }
 });
 
-// بدء البوت
-bot.launch().catch(err => console.error("Error launching bot:", err));
+bot.launch().then(() => console.log("✅ البوت يعمل!"));
