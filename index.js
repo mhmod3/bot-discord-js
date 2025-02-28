@@ -9,11 +9,11 @@ bot.on("text", (ctx) => {
   const messageText = ctx.message.text;
 
   // تحقق إذا كانت الرسالة تحتوي على رابط الحلقة
-  const regex = /https:\/\/hianime\.to\/watch\/([a-zA-Z0-9\-]+)\?ep=\d+/;
+  const regex = /https:\/\/hianime\.to\/watch\/([a-zA-Z0-9\-]+(\?ep=\d+))/;
   const match = messageText.match(regex);
 
   if (match) {
-    const episodeId = match[1];  // استخراج الـ id
+    const episodeId = match[1];  // استخراج الـ id مثل "blue-lock-17889?ep=94951"
 
     // جلب مصادر الحلقة باستخدام الـ id
     getAnimeEpisodeSources(episodeId, "hd-1", "sub")
@@ -26,7 +26,7 @@ bot.on("text", (ctx) => {
         ctx.reply(`حدث خطأ أثناء جلب البيانات: ${err.message}`);
       });
   } else {
-    ctx.reply("من فضلك أرسل رابط حلقة بشكل صحيح (مثال: https://hianime.to/watch/dr-stone-science-future-19430?ep=131687).");
+    ctx.reply("من فضلك أرسل رابط حلقة بشكل صحيح (مثال: https://hianime.to/watch/blue-lock-17889?ep=94951).");
   }
 });
 
