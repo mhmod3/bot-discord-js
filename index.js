@@ -1,50 +1,29 @@
-import express from 'express';
+const express = require("express");
+const aniwatch = require("aniwatch");
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = 3000;
 
-app.use(express.json());
+// خدمة الملفات الثابتة
+app.use(express.static("public"));
 
-app.get('/api/episode', async (req, res) => {
-  const { episodeId } = req.query;
+// API لجلب المصادر
+app.get("/get-episode", async (req, res) => {
+    const episodeId = req.query.episodeId;
 
-  if (!episodeId) {
-    return res.status(400).json({ error: '❌ Missing episodeId' });
-  }
-
-  try {
-    console.log(`🔍 جلب بيانات الحلقة: ${episodeId}`);
-
-    // تحميل المكتبة `aniwatch` ديناميكيًا
-    const aniwatch = await import("aniwatch");
-    const { getAnimeEpisodeSources } = aniwatch;
-
-    // جلب بيانات الحلقة
-    const data = await getAnimeEpisodeSources(episodeId, "hd-1", "sub");
-
-    if (!data || !data.sources || data.sources.length === 0) {
-      console.warn("⚠️ لا توجد مصادر فيديو متاحة لهذه الحلقة.");
-      return res.status(404).json({ error: "No episode sources found." });
+    if (!episodeId) {
+        return res.status(400).json({ error: "يجب إدخال ID الحلقة" });
     }
 
-    // فلترة المصادر للحصول على روابط `.m3u8`
-    const m3u8Sources = data.sources.filter(src => src.isM3U8);
-    const vttSubtitles = data.subtitles || [];
-
-    res.json({
-      episodeId,
-      m3u8Sources,
-      vttSubtitles,
-      anilistID: data.anilistID,
-      malID: data.malID
-    });
-
-  } catch (err) {
-    console.error("❌ خطأ أثناء جلب البيانات:", err);
-    res.status(500).json({ error: '⚠️ Failed to fetch episode data', details: err.message });
-  }
+    try {
+        const data = await aniwatch.getAnimeEpisodeSources(episodeId, "hd-1", "sub");
+        res.json(data);
+    } catch (err) {
+        res.status(500).json({ error: "فشل في جلب البيانات", details: err.message });
+    }
 });
 
+// بدء تشغيل الخادم
 app.listen(port, () => {
-  console.log(`✅ السيرفر يعمل على: https://bot-discord-js-4xqg.onrender.com`);
+    console.log(`Server running on http://localhost:${port}`);
 });
