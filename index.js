@@ -1,43 +1,48 @@
 import express from 'express';
-import("aniwatch") // استدعاء المكتبة بشكل ديناميكي
-  .then((aniwatch) => {
-    const { getAnimeEpisodeSources } = aniwatch; // استخدام الوظيفة المتاحة
+import { HiAnime } from "aniwatch";
 
-    const app = express();
-    const port = process.env.PORT || 3000;
+const hianime = new HiAnime.Scraper(); // استدعاء `HiAnime` بالطريقة الصحيحة
+const app = express();
+const port = process.env.PORT || 3000;
 
-    app.use(express.json());
+app.use(express.json());
 
-    app.get('/api/episode', async (req, res) => {
-      const { episodeId } = req.query;
+app.get('/api/episode', async (req, res) => {
+  const { episodeId } = req.query;
 
-      if (!episodeId) {
-        return res.status(400).json({ error: '❌ Missing episodeId' });
-      }
+  if (!episodeId) {
+    return res.status(400).json({ error: '❌ Missing episodeId' });
+  }
 
-      try {
-        console.log(`🔍 جلب بيانات الحلقة: ${episodeId}`);
+  try {
+    console.log(`🔍 جلب بيانات الحلقة: ${episodeId}`);
 
-        // استدعاء `getAnimeEpisodeSources`
-        const data = await getAnimeEpisodeSources(episodeId, "hd-1", "sub");
+    // جلب بيانات الحلقة
+    const data = await hianime.getEpisodeSources(episodeId, "hd-1", "sub");
 
-        // التحقق من وجود المصادر
-        if (!data || !data.sources || data.sources.length === 0) {
-          console.warn("⚠️ لا توجد مصادر فيديو متاحة لهذه الحلقة.");
-          return res.status(404).json({ error: "No episode sources found." });
-        }
+    if (!data || !data.sources || data.sources.length === 0) {
+      console.warn("⚠️ لا توجد مصادر فيديو متاحة لهذه الحلقة.");
+      return res.status(404).json({ error: "No episode sources found." });
+    }
 
-        res.json(data); // إرسال البيانات إلى المستخدم
-      } catch (err) {
-        console.error("❌ خطأ أثناء جلب البيانات:", err);
-        res.status(500).json({ error: '⚠️ Failed to fetch episode data', details: err.message });
-      }
+    // فلترة المصادر للحصول على روابط `.m3u8`
+    const m3u8Sources = data.sources.filter(src => src.isM3U8);
+    const vttSubtitles = data.subtitles || [];
+
+    res.json({
+      episodeId,
+      m3u8Sources,
+      vttSubtitles,
+      anilistID: data.anilistID,
+      malID: data.malID
     });
 
-    app.listen(port, () => {
-      console.log(`✅ السيرفر يعمل على: https://bot-discord-js-4xqg.onrender.com`);
-    });
-  })
-  .catch((err) => {
-    console.error("❌ خطأ أثناء تحميل aniwatch:", err);
-  });
+  } catch (err) {
+    console.error("❌ خطأ أثناء جلب البيانات:", err);
+    res.status(500).json({ error: '⚠️ Failed to fetch episode data', details: err.message });
+  }
+});
+
+app.listen(port, () => {
+  console.log(`✅ السيرفر يعمل على: https://bot-discord-js-4xqg.onrender.com`);
+});
