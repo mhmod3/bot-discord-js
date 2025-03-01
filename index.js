@@ -1,7 +1,11 @@
 import express from 'express';
+import { HiAnime } from "aniwatch"; // استيراد المكتبة بالطريقة الصحيحة
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+// إنشاء كائن `Scraper` من `HiAnime`
+const hianime = new HiAnime.Scraper();
 
 app.use(express.json()); // دعم JSON للطلبات
 
@@ -13,16 +17,12 @@ app.get('/api/episode', async (req, res) => {
   }
 
   try {
-    // استدعاء aniwatch ديناميكيًا لمنع مشاكل ES Modules
-    const aniwatch = await import("aniwatch");
-    const { getAnimeEpisodeSources } = aniwatch;
-
     console.log(`🔍 جلب بيانات الحلقة: ${episodeId}`);
 
-    // جلب المصادر مع تحديد `server: "hd-1"`
-    const data = await getAnimeEpisodeSources(episodeId, "hd-1", "sub");
+    // استدعاء `getEpisodeSources` وفقًا للتوثيق الرسمي
+    const data = await hianime.getEpisodeSources(episodeId, "hd-1", "sub");
 
-    // التحقق من البيانات وإرجاع المصادر
+    // التحقق من وجود المصادر
     if (!data || !data.sources || data.sources.length === 0) {
       console.warn("⚠️ لا توجد مصادر فيديو متاحة لهذه الحلقة.");
       return res.status(404).json({ error: "No episode sources found." });
