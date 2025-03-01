@@ -1,7 +1,7 @@
 import { Telegraf, Markup } from 'telegraf';
 import { HiAnime } from 'aniwatch';
 
-const bot = new Telegraf('7524565250:AAEdYw9Q9H_5WtGXIfUxCTl8K3ZpA49a4so'); // استبدل بـ التوكن الخاص بك
+const bot = new Telegraf('7524565250:AAHF-D5mCEObXanOQgMe_UEKnoWnAfRb9tw'); // استبدل بـ التوكن الخاص بك
 const hianime = new HiAnime.Scraper();
 
 // إيموجي لتحسين الرسائل
