@@ -1,7 +1,8 @@
 const { Telegraf } = require('telegraf');
 const axios = require('axios');
+const express = require('express');
 const fs = require('fs');
-const http = require('http'); // إضافة مكتبة http
+const keepAlive = require('./keep_alive.js');
 
 const bot = new Telegraf('7524565250:AAHF-D5mCEObXanOQgMe_UEKnoWnAfRb9tw');
 
@@ -40,21 +41,6 @@ async function fetchEpisodeSource(episodeId) {
     }
     return null;
 }
-
-// خادم HTTP بسيط للحفاظ على البوت مستمر
-const server = http.createServer((req, res) => {
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('Bot is alive!');
-});
-
-server.listen(3000, () => {
-    console.log('Bot is running on port 3000');
-});
-
-// Keep-alive: إرسال طلب للبوت بشكل دوري
-setInterval(() => {
-    require('http').get('https://bot-discord-js-4xqg.onrender.com'); // استخدم الرابط الخاص بالبوت
-}, 300000); // كل 5 دقائق
 
 bot.on('text', async (ctx) => {
     const url = ctx.message.text.trim();
@@ -127,5 +113,5 @@ bot.action(/^sendfile_(.+)$/, async (ctx) => {
         ctx.reply('❌ حدث خطأ أثناء إرسال الملف.');
     }
 });
-
+keepAlive();
 bot.launch();
