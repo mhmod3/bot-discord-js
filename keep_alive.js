@@ -1,14 +1,14 @@
-import http from 'http';
+const express = require('express');
+const server = express();
+ 
+server.all('/', (req, res) => {
+  res.send(`OK`)
+})
+ 
+function keepAlive() {
+  server.listen(3000, () => { console.log("Server is Ready!!" + Date.now()) });
+}
+ 
+module.exports = keepAlive;
 
-const keepAlive = () => {
-  const server = http.createServer((req, res) => {
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('Bot is running');
-  });
-
-  server.listen(3001, () => {
-    console.log('Keep-alive server is running on port 3001');
-  });
-};
-
-export default keepAlive;
+//keep alive script was made by cpt.motchy
