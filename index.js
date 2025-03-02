@@ -77,7 +77,7 @@ bot.action(/^all_(.+)$/, async (ctx) => {
     const filePath = `episodes_${animeId}.txt`;
     fs.writeFileSync(filePath, links.join('\n'));
     
-    ctx.reply(`✅ تم جلب جميع الحلقات! (أحدث حلقة: ${episodes.length})`, {
+    ctx.reply(`✅ تم جلب جميع الحلقات! (أحدث حلقة: ${episodes.length})\n\nBy: @liM7mod`, {
         reply_markup: {
             inline_keyboard: [[{ text: '📂 إرسال ملف TXT', callback_data: `sendfile_${animeId}` }]]
         }
@@ -95,7 +95,7 @@ bot.action(/^last_(.+)$/, async (ctx) => {
     const lastEpisode = episodes[episodes.length - 1];
     let source = await fetchEpisodeSource(lastEpisode.episodeId);
     if (source) {
-        ctx.reply(`🔥 آخر حلقة (${lastEpisode.number}):\n${source}`);
+        ctx.reply(`🔥 آخر حلقة (${lastEpisode.number}):\n${source}\n\nBy: @liM7mod`);
     } else {
         ctx.reply('❌ لم يتم العثور على رابط الحلقة.');
     }
