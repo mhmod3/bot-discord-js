@@ -8,7 +8,7 @@ const express = require('express');
 const app = express();
 app.use(express.json()); // معالجة JSON باستخدام express مباشرة
 
-const bot = new Telegraf('YOUR_BOT_TOKEN');
+const bot = new Telegraf('7524565250:AAGwInP2htEWwrXv9dxgIFwZb11xpiRQJE4');
 
 // إعداد Webhook هنا مع رابط render
 const WEBHOOK_URL = 'https://bot-discord-js-4xqg.onrender.com/webhook';
