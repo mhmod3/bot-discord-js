@@ -1,7 +1,7 @@
 const { Telegraf } = require('telegraf');
 const express = require('express');
 
-const bot = new Telegraf('7524565250:AAHF-D5mCEObXanOQgMe_UEKnoWnAfRb9tw');  // استبدل بـ توكن البوت الخاص بك
+const bot = new Telegraf('7524565250:AAGwInP2htEWwrXv9dxgIFwZb11xpiRQJE4');  // استبدل بـ توكن البوت الخاص بك
 const app = express();
 
 // تحديد المسار لتلقي التحديثات من Telegram
