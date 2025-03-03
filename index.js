@@ -10,7 +10,7 @@ app.use('/webhook', bot.webhookCallback());
 // تعيين الـ Webhook
 const TELEGRAM_WEBHOOK_URL = `https://bot-discord-js-4xqg.onrender.com/webhook`;
 
-bot.setWebhook(TELEGRAM_WEBHOOK_URL).then(() => {
+bot.telegram.setWebhook(TELEGRAM_WEBHOOK_URL).then(() => {
     console.log("Webhook تم تعيينه بنجاح");
 }).catch((error) => {
     console.error("خطأ في تعيين الـ Webhook:", error);
