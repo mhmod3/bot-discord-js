@@ -2,9 +2,14 @@ const { Telegraf } = require('telegraf');
 const axios = require('axios');
 const express = require('express');
 const fs = require('fs');
-const keepAlive = require('./keep_alive.js');
 
-const bot = new Telegraf('7524565250:AAGwInP2htEWwrXv9dxgIFwZb11xpiRQJE4');
+// إعداد البوت وtoken الخاص به
+const bot = new Telegraf('7524565250:AAHF-D5mCEObXanOQgMe_UEKnoWnAfRb9tw');
+
+// إعداد express
+const app = express();
+const PORT = process.env.PORT || 3000;
+const TELEGRAM_WEBHOOK_URL = `https://bot-discord-js-4xqg.onrender.com/7524565250:AAHF-D5mCEObXanOQgMe_UEKnoWnAfRb9tw`;  // تغيير إلى عنوان الـ URL الخاص بك
 
 // التحقق من صحة الرابط واستخراج ID الأنمي
 function extractAnimeId(url) {
@@ -42,13 +47,20 @@ async function fetchEpisodeSource(episodeId) {
     return null;
 }
 
+// إعداد Webhook للبوت
+bot.setWebhook(TELEGRAM_WEBHOOK_URL);
+
+// استقبال التحديثات عبر express
+app.use(bot.webhookCallback(`/7524565250:AAHF-D5mCEObXanOQgMe_UEKnoWnAfRb9tw`));
+
+// معالجة الرسائل
 bot.on('text', async (ctx) => {
     const url = ctx.message.text.trim();
     const animeId = extractAnimeId(url);
     if (!animeId) {
         return ctx.reply('❌ الرابط غير صالح أو ليس من hianime.to');
     }
-    
+
     ctx.reply(`🔍 تم استخراج ID الأنمي: ${animeId}`, {
         reply_markup: {
             inline_keyboard: [
@@ -66,7 +78,7 @@ bot.action(/^all_(.+)$/, async (ctx) => {
     if (!episodes.length) {
         return ctx.reply('❌ لم يتم العثور على الحلقات.');
     }
-    
+
     let links = [];
     for (let episode of episodes) {
         let source = await fetchEpisodeSource(episode.episodeId);
@@ -75,10 +87,10 @@ bot.action(/^all_(.+)$/, async (ctx) => {
         }
     }
     if (!links.length) return ctx.reply('❌ لم يتم العثور على روابط الحلقات.');
-    
+
     const filePath = `episodes_${animeId}.txt`;
     fs.writeFileSync(filePath, links.join('\n'));
-    
+
     ctx.reply(`✅ تم جلب جميع الحلقات! (أحدث حلقة: ${episodes.length})\n\nhttps://t.me/liM7mod`, {
         reply_markup: {
             inline_keyboard: [[{ text: '📂 إرسال ملف TXT', callback_data: `sendfile_${animeId}` }]]
@@ -93,7 +105,7 @@ bot.action(/^last_(.+)$/, async (ctx) => {
     if (!episodes.length) {
         return ctx.reply('❌ لم يتم العثور على الحلقات.');
     }
-    
+
     const lastEpisode = episodes[episodes.length - 1];
     let source = await fetchEpisodeSource(lastEpisode.episodeId);
     if (source) {
@@ -113,5 +125,8 @@ bot.action(/^sendfile_(.+)$/, async (ctx) => {
         ctx.reply('❌ حدث خطأ أثناء إرسال الملف.');
     }
 });
-keepAlive();
-bot.launch();
+
+// بدء الخادم
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+});
