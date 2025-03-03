@@ -1,139 +1,150 @@
-const { Telegraf } = require('telegraf');
+const { Telegraf, Markup } = require('telegraf');
 const axios = require('axios');
-const express = require('express');
 const fs = require('fs');
+const path = require('path');
+const express = require('express');
 
-
-const bot = new Telegraf('7524565250:AAGwInP2htEWwrXv9dxgIFwZb11xpiRQJE4');  // استبدل بـ توكن البوت الخاص بك
+// إعداد express
 const app = express();
+app.use(express.json()); // معالجة JSON باستخدام express مباشرة
 
-// تحديد المسار لتلقي التحديثات من Telegram
-app.use('/webhook', bot.webhookCallback());
+const bot = new Telegraf('7524565250:AAGwInP2htEWwrXv9dxgIFwZb11xpiRQJE4');
 
-// تعيين الـ Webhook
-const TELEGRAM_WEBHOOK_URL = `https://bot-discord-js-4xqg.onrender.com/webhook`;
+// إعداد Webhook هنا مع رابط render
+const WEBHOOK_URL = 'https://bot-discord-js-4xqg.onrender.com';
 
-bot.telegram.setWebhook(TELEGRAM_WEBHOOK_URL).then(() => {
-    console.log("Webhook تم تعيينه بنجاح");
-}).catch((error) => {
-    console.error("خطأ في تعيين الـ Webhook:", error);
+// تسجيل Webhook للبوت
+bot.telegram.setWebhook(WEBHOOK_URL);
+
+// هذا الجزء لإدارة الرسائل الواردة من Webhook
+app.post('/webhook', (req, res) => {
+    const update = req.body;
+    bot.handleUpdate(update);
+    res.send('ok');
 });
 
-// تحديد المنفذ الذي يعمل عليه السيرفر
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+// الاستجابة لبدء المحادثة
+bot.start((ctx) => ctx.reply('مرحبا! ارسل اسم الأنمي أو رابط من hianime.'));
+
+// المتابعة كما هي في الكود الأساسي
+let ongoingSearches = new Map();
+
+bot.on('text', async (ctx) => {
+    const text = ctx.message.text.trim();
+    
+    if (ongoingSearches.has(ctx.chat.id)) {
+        const searchResults = ongoingSearches.get(ctx.chat.id);
+        const index = parseInt(text) - 1;
+        
+        if (!isNaN(index) && index >= 0 && index < searchResults.length) {
+            ongoingSearches.delete(ctx.chat.id);
+            return fetchAnimeDetails(ctx, searchResults[index].id);
+        }
+    }
+    
+    if (text.startsWith('https://hianime.to/')) {
+        const match = text.match(/(?:watch\/)?([\w\-]+-\d+)\??/);
+        if (!match) return ctx.reply('الرابط غير صالح.');
+        fetchAnimeDetails(ctx, match[1]);
+    } else {
+        searchAnime(ctx, text);
+    }
 });
 
-// تعريف الدوال الأخرى الخاصة بالبوت
-// التحقق من صحة الرابط واستخراج ID الأنمي
-function extractAnimeId(url) {
-    if (!url.startsWith('https://hianime.to/')) return null;
-    const match = url.match(/(?:watch\/)?([\w\d-]+-\d+)/);
-    return match ? match[1] : null;
-}
-
-// استخراج الحلقات
-async function fetchEpisodes(animeId) {
-    const apiUrl = `https://aniwatch-api-chi-liard.vercel.app/api/v2/hianime/anime/${animeId}/episodes`;
+async function searchAnime(ctx, query) {
     try {
-        const response = await axios.get(apiUrl);
-        return response.data.success ? response.data.data.episodes : [];
+        const res = await axios.get(`https://aniwatch-api-chi-liard.vercel.app/api/v2/hianime/search?q=${query}&page=1`);
+        if (!res.data.success || res.data.data.animes.length === 0) return ctx.reply('لم يتم العثور على نتائج.');
+        
+        let message = 'اختر رقم الأنمي:\n';
+        res.data.data.animes.forEach((anime, index) => {
+            message += `${index + 1}. ${anime.name}\n`;
+        });
+        
+        ongoingSearches.set(ctx.chat.id, res.data.data.animes);
+        ctx.reply(message);
     } catch (error) {
-        return [];
+        ctx.reply('حدث خطأ أثناء البحث.');
     }
 }
 
-// استخراج رابط الحلقة
-async function fetchEpisodeSource(episodeId) {
-    const servers = ['hd-2', 'hd-1', 'raw'];
-    const categories = ['sub', 'raw'];
-    for (let server of servers) {
-        for (let category of categories) {
-            try {
-                const apiUrl = `https://aniwatch-api-chi-liard.vercel.app/api/v2/hianime/episode/sources?animeEpisodeId=${episodeId}&server=${server}&category=${category}`;
-                const response = await axios.get(apiUrl);
-                if (response.data.success && response.data.data.sources.length > 0) {
-                    return response.data.data.sources[0].url;
-                }
-            } catch (error) {}
+async function fetchAnimeDetails(ctx, animeId) {
+    try {
+        const res = await axios.get(`https://aniwatch-api-chi-liard.vercel.app/api/v2/hianime/anime/${animeId}`);
+        if (!res.data.success) return ctx.reply('تعذر جلب تفاصيل الأنمي.');
+        
+        const info = res.data.data.anime.info;
+        const truncatedDescription = truncateText(info.description, 950);
+        const caption = `${info.name}\n\n"${truncatedDescription}"\n\nعدد الحلقات: ${info.stats.episodes.sub}`;
+        
+        ctx.replyWithPhoto(info.poster, {
+            caption,
+            parse_mode: 'Markdown',
+            ...Markup.inlineKeyboard([
+                [Markup.button.callback('جلب جميع الحلقات', `all_${animeId}`)],
+                [Markup.button.callback('جلب أخر حلقة', `last_${animeId}`)]
+            ])
+        });
+    } catch (error) {
+        ctx.reply('حدث خطأ أثناء جلب تفاصيل الأنمي.');
+    }
+}
+
+function truncateText(text, maxLength) {
+    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+}
+
+bot.action(/^all_(.+)/, async (ctx) => {
+    const animeId = ctx.match[1];
+    try {
+        const res = await axios.get(`https://aniwatch-api-chi-liard.vercel.app/api/v2/hianime/anime/${animeId}/episodes`);
+        if (!res.data.success) return ctx.reply('تعذر جلب الحلقات.');
+        
+        const episodeIds = res.data.data.episodes.map(ep => ep.episodeId);
+        let links = [];
+        
+        for (let epId of episodeIds) {
+            const link = await fetchEpisodeLink(epId);
+            if (link) links.push(link);
         }
+        
+        const filename = path.join(__dirname, `${Date.now()}.txt`);
+        fs.writeFileSync(filename, links.join('\n'));
+        await ctx.replyWithDocument({ source: filename });
+        fs.unlinkSync(filename);
+    } catch (error) {
+        ctx.reply('حدث خطأ أثناء جلب جميع الحلقات.');
+    }
+});
+
+bot.action(/^last_(.+)/, async (ctx) => {
+    const animeId = ctx.match[1];
+    try {
+        const res = await axios.get(`https://aniwatch-api-chi-liard.vercel.app/api/v2/hianime/anime/${animeId}/episodes`);
+        if (!res.data.success) return ctx.reply('تعذر جلب الحلقات.');
+        
+        const lastEp = res.data.data.episodes[res.data.data.episodes.length - 1];
+        const link = await fetchEpisodeLink(lastEp.episodeId);
+        if (link) ctx.reply(`رابط الحلقة (${lastEp.number}): ${link}`);
+    } catch (error) {
+        ctx.reply('حدث خطأ أثناء جلب أخر حلقة.');
+    }
+});
+
+async function fetchEpisodeLink(episodeId) {
+    const servers = ['hd-2', 'hd-1'];
+    for (let server of servers) {
+        try {
+            const res = await axios.get(`https://aniwatch-api-chi-liard.vercel.app/api/v2/hianime/episode/sources?animeEpisodeId=${episodeId}&server=${server}&category=sub`);
+            if (res.data.success && res.data.data.sources.length > 0) {
+                return res.data.data.sources[0].url;
+            }
+        } catch (error) {}
     }
     return null;
 }
 
-// التعامل مع الرسائل النصية
-bot.on('text', async (ctx) => {
-    const url = ctx.message.text.trim();
-    const animeId = extractAnimeId(url);
-    if (!animeId) {
-        return ctx.reply('❌ الرابط غير صالح أو ليس من hianime.to');
-    }
-    
-    ctx.reply(`🔍 تم استخراج ID الأنمي: ${animeId}`, {
-        reply_markup: {
-            inline_keyboard: [
-                [{ text: '📥 جلب كل الحلقات', callback_data: `all_${animeId}` }],
-                [{ text: '🔥 جلب آخر حلقة', callback_data: `last_${animeId}` }]
-            ]
-        }
-    });
-});
-
-// التعامل مع جلب جميع الحلقات
-bot.action(/^all_(.+)$/, async (ctx) => {
-    const animeId = ctx.match[1];
-    await ctx.reply('🔄 جاري جلب جميع الحلقات...');
-    const episodes = await fetchEpisodes(animeId);
-    if (!episodes.length) {
-        return ctx.reply('❌ لم يتم العثور على الحلقات.');
-    }
-    
-    let links = [];
-    for (let episode of episodes) {
-        let source = await fetchEpisodeSource(episode.episodeId);
-        if (source) {
-            links.push(source);
-        }
-    }
-    if (!links.length) return ctx.reply('❌ لم يتم العثور على روابط الحلقات.');
-    
-    const filePath = `episodes_${animeId}.txt`;
-    fs.writeFileSync(filePath, links.join('\n'));
-    
-    ctx.reply(`✅ تم جلب جميع الحلقات! (أحدث حلقة: ${episodes.length})\n\nhttps://t.me/liM7mod`, {
-        reply_markup: {
-            inline_keyboard: [[{ text: '📂 إرسال ملف TXT', callback_data: `sendfile_${animeId}` }]]
-        }
-    });
-});
-
-// التعامل مع جلب آخر حلقة
-bot.action(/^last_(.+)$/, async (ctx) => {
-    const animeId = ctx.match[1];
-    await ctx.reply('🔄 جاري جلب آخر حلقة...');
-    const episodes = await fetchEpisodes(animeId);
-    if (!episodes.length) {
-        return ctx.reply('❌ لم يتم العثور على الحلقات.');
-    }
-    
-    const lastEpisode = episodes[episodes.length - 1];
-    let source = await fetchEpisodeSource(lastEpisode.episodeId);
-    if (source) {
-        ctx.reply(`🔥 آخر حلقة (${lastEpisode.number}):\n${source}\n\nBy: https://t.me/liM7mod`);
-    } else {
-        ctx.reply('❌ لم يتم العثور على رابط الحلقة.');
-    }
-});
-
-// التعامل مع إرسال ملف TXT
-bot.action(/^sendfile_(.+)$/, async (ctx) => {
-    const animeId = ctx.match[1];
-    const filePath = `episodes_${animeId}.txt`;
-    try {
-        await ctx.replyWithDocument({ source: filePath });
-        fs.unlinkSync(filePath);
-    } catch (error) {
-        ctx.reply('❌ حدث خطأ أثناء إرسال الملف.');
-    }
+// بدء تشغيل السيرفر على البورت 3000
+app.listen(3000, () => {
+    console.log('Server is running on https://bot-discord-js-4xqg.onrender.com');
 });
