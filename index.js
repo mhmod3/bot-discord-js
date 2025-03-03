@@ -8,10 +8,10 @@ const express = require('express');
 const app = express();
 app.use(express.json()); // معالجة JSON باستخدام express مباشرة
 
-const bot = new Telegraf('7524565250:AAGwInP2htEWwrXv9dxgIFwZb11xpiRQJE4');
+const bot = new Telegraf('YOUR_BOT_TOKEN');
 
 // إعداد Webhook هنا مع رابط render
-const WEBHOOK_URL = 'https://bot-discord-js-4xqg.onrender.com';
+const WEBHOOK_URL = 'https://bot-discord-js-4xqg.onrender.com/webhook';
 
 // تسجيل Webhook للبوت
 bot.telegram.setWebhook(WEBHOOK_URL);
@@ -144,7 +144,10 @@ async function fetchEpisodeLink(episodeId) {
     return null;
 }
 
-// بدء تشغيل السيرفر على البورت 3000
-app.listen(3000, () => {
-    console.log('Server is running on https://bot-discord-js-4xqg.onrender.com');
+// استخدام البورت من البيئة أو 4000 بشكل افتراضي
+const port = process.env.PORT || 4000;
+
+// بدء تشغيل السيرفر على البورت المحدد
+app.listen(port, () => {
+    console.log(`Server is running on https://bot-discord-js-4xqg.onrender.com (Port: ${port})`);
 });
