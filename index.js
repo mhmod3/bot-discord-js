@@ -4,7 +4,7 @@ const express = require('express');
 const fs = require('fs');
 const keepAlive = require('./keep_alive.js');
 
-const bot = new Telegraf('7524565250:AAHF-D5mCEObXanOQgMe_UEKnoWnAfRb9tw');
+const bot = new Telegraf('7524565250:AAGwInP2htEWwrXv9dxgIFwZb11xpiRQJE4');
 
 // التحقق من صحة الرابط واستخراج ID الأنمي
 function extractAnimeId(url) {
