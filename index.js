@@ -47,11 +47,8 @@ async function fetchEpisodeSource(episodeId) {
     return null;
 }
 
-// إعداد Webhook للبوت
-bot.setWebhook(TELEGRAM_WEBHOOK_URL);
-
 // استقبال التحديثات عبر express
-app.use(bot.webhookCallback(`/7524565250:AAHF-D5mCEObXanOQgMe_UEKnoWnAfRb9tw`));
+app.use(bot.webhookCallback(`/`));
 
 // معالجة الرسائل
 bot.on('text', async (ctx) => {
@@ -126,7 +123,7 @@ bot.action(/^sendfile_(.+)$/, async (ctx) => {
     }
 });
 
-// بدء الخادم
+// تحديد الـ webhook
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
