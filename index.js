@@ -114,10 +114,4 @@ bot.action(/^sendfile_(.+)$/, async (ctx) => {
     }
 });
 keepAlive();
-bot.launch({
-    webhook: {
-        domain: 'https://bot-discord-js-4xqg.onrender.com', // استبدل هذا بعنوان الـ URL الخاص بك
-        port: 3000
-    }
-});
-
+bot.launch();
