@@ -82,17 +82,72 @@ async function fetchAnimeDetails(ctx, animeId) {
             parse_mode: 'Markdown',
             ...Markup.inlineKeyboard([
                 [Markup.button.callback('جلب جميع الحلقات', `all_${animeId}`)],
-                [Markup.button.callback('جلب أخر حلقة', `last_${animeId}`)]
+                [Markup.button.callback('جلب أخر حلقة', `last_${animeId}`)],
+                [Markup.button.callback('جلب حلقات محددة', `specific_${animeId}`)]  // إضافة الزر الجديد
             ])
         });
     } catch (error) {
+        console.error(error);
         ctx.reply('حدث خطأ أثناء جلب تفاصيل الأنمي.');
     }
 }
 
-function truncateText(text, maxLength) {
-    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
-}
+// التعامل مع زر "جلب حلقات محددة"
+bot.action(/^specific_(.+)/, async (ctx) => {
+    const animeId = ctx.match[1];
+    try {
+        const res = await axios.get(`https://aniwatch-api-chi-liard.vercel.app/api/v2/hianime/anime/${animeId}/episodes`);
+        if (!res.data.success) return ctx.reply('تعذر جلب الحلقات.');
+
+        const episodes = res.data.data.episodes;
+        const totalEpisodes = res.data.data.totalEpisodes;
+
+        let message = `الأنمي يحتوي على ${totalEpisodes} حلقة. من فضلك حدد الحلقات التي ترغب في الحصول عليها (حدد بداية الحلقة ونهايتها).\nمثال: 1-5 لجلب الحلقات من 1 إلى 5`;
+
+        ctx.reply(message);
+
+        // إضافة حفظ الحلقات المحددة من قبل المستخدم
+        bot.on('text', async (ctx) => {
+            const text = ctx.message.text.trim();
+
+            // تأكد من أن النص يتبع الصيغة الصحيحة
+            const match = text.match(/^(\d+)-(\d+)$/);
+            if (match) {
+                const startEpisode = parseInt(match[1]);
+                const endEpisode = parseInt(match[2]);
+
+                // تحقق من أن النطاق صحيح
+                if (startEpisode >= 1 && endEpisode <= totalEpisodes && startEpisode <= endEpisode) {
+                    let selectedEpisodes = episodes.slice(startEpisode - 1, endEpisode);
+                    let links = [];
+
+                    selectedEpisodes.forEach((ep) => {
+                        const link = `رابط الحلقة ${ep.number}: https://hianime.to/watch/${ep.episodeId}`;
+                        links.push(link);
+                    });
+
+                    // إذا كانت الحلقات أكثر من 4، نرسلها في ملف نصي
+                    if (links.length >= 4) {
+                        const filename = path.join(__dirname, `${Date.now()}.txt`);
+                        fs.writeFileSync(filename, links.join('\n'));
+                        await ctx.replyWithDocument({ source: filename });
+                        fs.unlinkSync(filename);
+                    } else {
+                        // إذا كانت الحلقات أقل من 4، نرسلها كرسالة عادية
+                        await ctx.reply(links.join('\n'));
+                    }
+                } else {
+                    ctx.reply('النطاق المحدد غير صحيح. تأكد من أن الأرقام بين 1 و ' + totalEpisodes);
+                }
+            } else {
+                ctx.reply('الرجاء إدخال النطاق بالصورة الصحيحة (مثال: 1-5).');
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        ctx.reply('حدث خطأ أثناء جلب الحلقات.');
+    }
+});
 
 bot.action(/^all_(.+)/, async (ctx) => {
     const animeId = ctx.match[1];
@@ -113,6 +168,7 @@ bot.action(/^all_(.+)/, async (ctx) => {
         await ctx.replyWithDocument({ source: filename });
         fs.unlinkSync(filename);
     } catch (error) {
+        console.error(error);
         ctx.reply('حدث خطأ أثناء جلب جميع الحلقات.');
     }
 });
@@ -127,6 +183,7 @@ bot.action(/^last_(.+)/, async (ctx) => {
         const link = await fetchEpisodeLink(lastEp.episodeId);
         if (link) ctx.reply(`رابط الحلقة (${lastEp.number}): ${link}`);
     } catch (error) {
+        console.error(error);
         ctx.reply('حدث خطأ أثناء جلب أخر حلقة.');
     }
 });
@@ -139,7 +196,9 @@ async function fetchEpisodeLink(episodeId) {
             if (res.data.success && res.data.data.sources.length > 0) {
                 return res.data.data.sources[0].url;
             }
-        } catch (error) {}
+        } catch (error) {
+            console.error(error);
+        }
     }
     return null;
 }
