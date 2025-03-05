@@ -133,13 +133,33 @@ bot.action(/^last_(.+)/, async (ctx) => {
 
 async function fetchEpisodeLink(episodeId) {
     const servers = ['hd-2', 'hd-1'];
-    for (let server of servers) {
-        try {
-            const res = await axios.get(`https://aniwatch-api-chi-liard.vercel.app/api/v2/hianime/episode/sources?animeEpisodeId=${episodeId}&server=${server}&category=sub`);
-            if (res.data.success && res.data.data.sources.length > 0) {
-                return res.data.data.sources[0].url;
+    const categories = ['sub', 'raw']; // نحدد الفئات هنا
+    
+    // محاولة استخدام hd-2 ثم hd-1 لكل فئة
+    for (let category of categories) {
+        for (let server of servers) {
+            try {
+                const link = await tryFetchingLink(episodeId, server, category);
+                if (link) return link; // إذا وجدنا الرابط، نعيده
+            } catch (error) {
+                console.error(`Error fetching ${category} link for server ${server}:`, error);
             }
-        } catch (error) {}
+        }
+    }
+    
+    // إذا فشلنا في الحصول على الرابط، نعيد null
+    return null;
+}
+
+async function tryFetchingLink(episodeId, server, category) {
+    try {
+        const res = await axios.get(`https://aniwatch-api-chi-liard.vercel.app/api/v2/hianime/episode/sources?animeEpisodeId=${episodeId}&server=${server}&category=${category}`);
+        if (res.data.success && res.data.data.sources.length > 0) {
+            // نرجع أول رابط م3u8 من المصادر
+            return res.data.data.sources[0].url;
+        }
+    } catch (error) {
+        console.error(`Error fetching ${category} link for server ${server}:`, error);
     }
     return null;
 }
