@@ -8,29 +8,36 @@ const app = express();
 app.use(express.json());
 
 const bot = new Telegraf('7524565250:AAGwInP2htEWwrXv9dxgIFwZb11xpiRQJE4');
-const WEBHOOK_URL = 'https://bot-discord-js-4xqg.onrender.com/webhook';
+const WEBHOOK_URL = 'https://your-render-app.onrender.com/webhook';
 
 bot.telegram.setWebhook(WEBHOOK_URL);
 
 app.post('/webhook', (req, res) => {
-    const update = req.body;
-    bot.handleUpdate(update);
+    bot.handleUpdate(req.body);
     res.send('ok');
 });
 
-bot.start((ctx) => ctx.reply('هااا ؟'));
-
 let ongoingSearches = new Map();
+let ongoingEpisodeSelection = new Map();
+
+bot.start((ctx) => ctx.reply('هااا ؟'));
 
 bot.on('text', async (ctx) => {
     const text = ctx.message.text.trim();
+    const chatId = ctx.chat.id;
     
-    if (ongoingSearches.has(ctx.chat.id)) {
-        const searchResults = ongoingSearches.get(ctx.chat.id);
+    if (ongoingEpisodeSelection.has(chatId)) {
+        const { animeId } = ongoingEpisodeSelection.get(chatId);
+        ongoingEpisodeSelection.delete(chatId);
+        return fetchSelectedEpisodes(ctx, animeId, text);
+    }
+    
+    if (ongoingSearches.has(chatId)) {
+        const searchResults = ongoingSearches.get(chatId);
         const index = parseInt(text) - 1;
         
         if (!isNaN(index) && index >= 0 && index < searchResults.length) {
-            ongoingSearches.delete(ctx.chat.id);
+            ongoingSearches.delete(chatId);
             return fetchAnimeDetails(ctx, searchResults[index].id);
         }
     }
@@ -67,7 +74,7 @@ async function fetchAnimeDetails(ctx, animeId) {
         if (!res.data.success) return ctx.reply('ما كدرت اجيب تفاصيل الانمي جيبها لنفسك');
         
         const info = res.data.data.anime.info;
-        const truncatedDescription = truncateText(info.description, 400);
+        const truncatedDescription = truncateText(info.description, 800);
         const caption = `اسم الانمي : ${info.name}\n\n"${truncatedDescription}"\n\nعدد الحلقات: ${info.stats.episodes.sub}`;
         
         ctx.replyWithPhoto(info.poster, {
@@ -84,49 +91,84 @@ async function fetchAnimeDetails(ctx, animeId) {
     }
 }
 
-function truncateText(text, maxLength) {
-    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
-}
-
-bot.action(/^select_(.+)/, async (ctx) => {
+bot.action(/^select_(.+)/, (ctx) => {
+    const animeId = ctx.match[1];
+    ongoingEpisodeSelection.set(ctx.chat.id, { animeId });
     ctx.reply('اكتب الحلقات التي تريدها بهذا الشكل: 5-10 أو 3,7,9');
-    ongoingSearches.set(ctx.chat.id, { animeId: ctx.match[1], mode: 'select' });
 });
 
-bot.on('text', async (ctx) => {
-    if (!ongoingSearches.has(ctx.chat.id)) return;
-    const searchData = ongoingSearches.get(ctx.chat.id);
-    if (searchData.mode !== 'select') return;
-    
-    const animeId = searchData.animeId;
-    const episodes = ctx.message.text.match(/\d+/g)?.map(Number) || [];
-    if (episodes.length === 0) return ctx.reply('الصيغة غير صحيحة، تأكد من كتابتها بالشكل الصحيح.');
-    
-    ongoingSearches.delete(ctx.chat.id);
-    
+async function fetchSelectedEpisodes(ctx, animeId, episodeRange) {
     try {
         const res = await axios.get(`https://aniwatch-api-chi-liard.vercel.app/api/v2/hianime/anime/${animeId}/episodes`);
         if (!res.data.success) return ctx.reply('مشكله...');
         
-        const availableEpisodes = res.data.data.episodes.filter(ep => episodes.includes(ep.number));
-        if (availableEpisodes.length === 0) return ctx.reply('ما لقيت الحلقات المطلوبة.');
+        const episodes = res.data.data.episodes;
+        const selectedEpisodes = parseEpisodeSelection(episodes, episodeRange);
         
         let links = [];
-        for (let ep of availableEpisodes) {
+        for (let ep of selectedEpisodes) {
             const link = await fetchEpisodeLink(ep.episodeId);
-            if (link) links.push(`الحلقة ${ep.number}: ${link}`);
+            if (link) links.push(`حلقة ${ep.number}: ${link}`);
         }
         
-        const filename = path.join(__dirname, `${Date.now()}.txt`);
-        fs.writeFileSync(filename, links.join('\n'));
-        await ctx.replyWithDocument({ source: filename });
-        fs.unlinkSync(filename);
+        if (links.length === 0) return ctx.reply('ما لكيت حلقات بهذي الارقام.');
+        ctx.reply(links.join('\n'));
     } catch (error) {
-        ctx.reply('مشكلة');
+        ctx.reply('مشكله...');
     }
-});
+}
+
+function parseEpisodeSelection(episodes, input) {
+    let selectedEpisodes = [];
+    const parts = input.split(',');
+    
+    for (let part of parts) {
+        if (part.includes('-')) {
+            const [start, end] = part.split('-').map(Number);
+            if (!isNaN(start) && !isNaN(end)) {
+                selectedEpisodes.push(...episodes.filter(ep => ep.number >= start && ep.number <= end));
+            }
+        } else {
+            const num = Number(part);
+            if (!isNaN(num)) {
+                const ep = episodes.find(ep => ep.number === num);
+                if (ep) selectedEpisodes.push(ep);
+            }
+        }
+    }
+    return selectedEpisodes;
+}
+
+function truncateText(text, maxLength) {
+    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+}
+
+async function fetchEpisodeLink(episodeId) {
+    const servers = ['hd-2', 'hd-1'];
+    const categories = ['sub', 'raw'];
+    
+    for (let category of categories) {
+        for (let server of servers) {
+            try {
+                const link = await tryFetchingLink(episodeId, server, category);
+                if (link) return link;
+            } catch (error) {}
+        }
+    }
+    return null;
+}
+
+async function tryFetchingLink(episodeId, server, category) {
+    try {
+        const res = await axios.get(`https://aniwatch-api-chi-liard.vercel.app/api/v2/hianime/episode/sources?animeEpisodeId=${episodeId}&server=${server}&category=${category}`);
+        if (res.data.success && res.data.data.sources.length > 0) {
+            return res.data.data.sources[0].url;
+        }
+    } catch (error) {}
+    return null;
+}
 
 const port = process.env.PORT || 4000;
 app.listen(port, () => {
-    console.log(`Server is running on https://bot-discord-js-4xqg.onrender.com (Port: ${port})`);
+    console.log(`Server is running on port ${port}`);
 });
