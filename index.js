@@ -75,7 +75,7 @@ async function fetchAnimeDetails(ctx, animeId) {
         
         const info = res.data.data.anime.info;
         const truncatedDescription = truncateText(info.description, 950);
-        const caption = `اسم الانمي : ${info.name}\n\n"${truncatedDescription}"\n\nعدد الحلقات: ${info.stats.episodes.sub}`;
+        const caption = `اسم الانمي : ${info.name}\n\nقصة الانمي (بالانجليزي ما يعجبك ترجمها لنفسك) : "${truncatedDescription}"\n\nعدد الحلقات : ${info.stats.episodes.sub}`;
         
         ctx.replyWithPhoto(info.poster, {
             caption,
