@@ -35,6 +35,11 @@ bot.on('text', async (ctx) => {
         }
     }
 
+    if (/^\d+\s*-\s*\d+$/.test(text) && !/[a-zA-Z\u0600-\u06FF]/.test(text)) {
+        const [start, end] = text.split('-').map(num => parseInt(num.trim()));
+        return fetchEpisodeRange(ctx, start, end);
+    }
+
     if (text.startsWith('https://hianime.to/')) {
         const match = text.match(/(?:watch\/)?([\w\-]+-\d+)\??/);
         if (!match) return ctx.reply('الرابط هذه ما يشتغل');
@@ -67,11 +72,10 @@ async function fetchAnimeDetails(ctx, animeId) {
         if (!res.data.success) return ctx.reply('ما كدرت اجيب تفاصيل الانمي جيبها لنفسك');
 
         const info = res.data.data.anime.info;
-        let truncatedDescription = truncateText(info.description, 900); // تقليل الطول إلى 900 حرف
+        let truncatedDescription = truncateText(info.description, 900);
 
         let caption = `اسم الانمي : ${info.name}\n\n"${truncatedDescription}"\n\nعدد الحلقات: ${info.stats.episodes.sub}`;
 
-        // التأكد أن الطول لا يتجاوز 1024 حرف
         if (caption.length > 1024) {
             caption = caption.substring(0, 1021) + '...';
         }
@@ -81,7 +85,8 @@ async function fetchAnimeDetails(ctx, animeId) {
             parse_mode: 'Markdown',
             ...Markup.inlineKeyboard([
                 [Markup.button.callback('جيب جميع الحلقات', `all_${animeId}`)],
-                [Markup.button.callback('جيب اخر حلقة نزلت', `last_${animeId}`)]
+                [Markup.button.callback('جيب اخر حلقة نزلت', `last_${animeId}`)],
+                [Markup.button.callback('جيب نطاق حلقات', `range_${animeId}`)]
             ])
         });
     } catch (error) {
@@ -89,8 +94,39 @@ async function fetchAnimeDetails(ctx, animeId) {
     }
 }
 
-function truncateText(text, maxLength) {
-    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+bot.action(/^range_(.+)/, (ctx) => {
+    ctx.reply('اكتب النطاق بهذه الصيغة: الحلقة - الحلقة (مثلاً: 5 - 10)');
+});
+
+async function fetchEpisodeRange(ctx, start, end) {
+    if (isNaN(start) || isNaN(end) || start < 1 || end < start) {
+        return ctx.reply('النطاق غير صحيح.');
+    }
+
+    try {
+        const res = await axios.get(`https://aniwatch-api-chi-liard.vercel.app/api/v2/hianime/anime/${ongoingSearches.get(ctx.chat.id)?.[0]?.id}/episodes`);
+        if (!res.data.success) return ctx.reply('مشكله...');
+
+        const episodes = res.data.data.episodes.filter(ep => ep.number >= start && ep.number <= end);
+        if (episodes.length === 0) return ctx.reply('ماكو حلقات بهذا النطاق.');
+
+        let links = [];
+        for (let ep of episodes) {
+            const link = await fetchEpisodeLink(ep.episodeId);
+            if (link) links.push(`الحلقة ${ep.number}: ${link}`);
+        }
+
+        if (links.length >= 4) {
+            const filename = path.join(__dirname, `${Date.now()}.txt`);
+            fs.writeFileSync(filename, links.join('\n'));
+            await ctx.replyWithDocument({ source: filename });
+            fs.unlinkSync(filename);
+        } else {
+            ctx.reply(links.join('\n'));
+        }
+    } catch (error) {
+        ctx.reply('مشكلة');
+    }
 }
 
 bot.action(/^all_(.+)/, async (ctx) => {
