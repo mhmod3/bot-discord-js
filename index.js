@@ -7,7 +7,7 @@ const express = require('express');
 const app = express();
 app.use(express.json());
 
-const bot = new Telegraf('7524565250:AAGwInP2htEWwrXv9dxgIFwZb11xpiRQJE4');
+const bot = new Telegraf('YOUR_BOT_TOKEN');
 
 // إعداد Webhook
 const WEBHOOK_URL = 'https://bot-discord-js-4xqg.onrender.com/webhook';
@@ -42,7 +42,10 @@ bot.on('text', async (ctx) => {
 
     if (text.startsWith('https://hianime.to/')) {
         const match = text.match(/(?:watch\/)?([\w\-]+-\d+)\??/);
-        if (!match) return ctx.reply('الرابط هذه ما يشتغل');
+        if (!match) {
+            console.error('الرابط غير صالح:', text);
+            return ctx.reply('الرابط هذه ما يشتغل');
+        }
         fetchAnimeDetails(ctx, match[1]);
     } else {
         searchAnime(ctx, text);
@@ -62,6 +65,7 @@ async function searchAnime(ctx, query) {
         ongoingSearches.set(ctx.chat.id, res.data.data.animes);
         ctx.reply(message);
     } catch (error) {
+        console.error('خطأ أثناء البحث عن الأنمي:', error);
         ctx.reply('مشكله...');
     }
 }
@@ -90,6 +94,7 @@ async function fetchAnimeDetails(ctx, animeId) {
             ])
         });
     } catch (error) {
+        console.error('خطأ أثناء جلب تفاصيل الأنمي:', error);
         ctx.reply('مشكله...');
     }
 }
@@ -125,6 +130,7 @@ async function fetchEpisodeRange(ctx, start, end) {
             ctx.reply(links.join('\n'));
         }
     } catch (error) {
+        console.error('خطأ أثناء جلب نطاق الحلقات:', error);
         ctx.reply('مشكلة');
     }
 }
@@ -148,6 +154,7 @@ bot.action(/^all_(.+)/, async (ctx) => {
         await ctx.replyWithDocument({ source: filename });
         fs.unlinkSync(filename);
     } catch (error) {
+        console.error('خطأ أثناء جلب جميع الحلقات:', error);
         ctx.reply('مشكلة');
     }
 });
@@ -162,6 +169,7 @@ bot.action(/^last_(.+)/, async (ctx) => {
         const link = await fetchEpisodeLink(lastEp.episodeId);
         if (link) ctx.reply(`رابط الحلقة (${lastEp.number}): ${link}`);
     } catch (error) {
+        console.error('خطأ أثناء جلب آخر حلقة:', error);
         ctx.reply('مشكله...');
     }
 });
@@ -176,23 +184,11 @@ async function fetchEpisodeLink(episodeId) {
                 const link = await tryFetchingLink(episodeId, server, category);
                 if (link) return link;
             } catch (error) {
-                console.error(`Error fetching ${category} link for server ${server}:`, error);
+                console.error(`خطأ أثناء جلب الرابط (${category}) للسيرفر (${server}):`, error);
             }
         }
     }
     
-    return null;
-}
-
-async function tryFetchingLink(episodeId, server, category) {
-    try {
-        const res = await axios.get(`https://aniwatch-api-chi-liard.vercel.app/api/v2/hianime/episode/sources?animeEpisodeId=${episodeId}&server=${server}&category=${category}`);
-        if (res.data.success && res.data.data.sources.length > 0) {
-            return res.data.data.sources[0].url;
-        }
-    } catch (error) {
-        console.error(`Error fetching ${category} link for server ${server}:`, error);
-    }
     return null;
 }
 
