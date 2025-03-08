@@ -8,7 +8,7 @@ const express = require('express');
 const app = express();
 app.use(express.json()); // معالجة JSON باستخدام express مباشرة
 
-const bot = new Telegraf('7524565250:AAGwInP2htEWwrXv9dxgIFwZb11xpiRQJE4');
+const bot = new Telegraf('7524565250:AAGPInP2htEWwrXv9dxgIFwZb11xpiRQJE4');
 
 // إعداد Webhook هنا مع رابط render
 const WEBHOOK_URL = 'https://bot-discord-js-4xqg.onrender.com/webhook';
@@ -18,8 +18,7 @@ bot.telegram.setWebhook(WEBHOOK_URL);
 
 // هذا الجزء لإدارة الرسائل الواردة من Webhook
 app.post('/webhook', (req, res) => {
-    const update = req.body;
-    bot.handleUpdate(update);
+    bot.handleUpdate(req.body);
     res.send('ok');
 });
 
@@ -74,24 +73,28 @@ async function fetchAnimeDetails(ctx, animeId) {
         if (!res.data.success) return ctx.reply('ما كدرت اجيب تفاصيل الانمي جيبها لنفسك');
         
         const info = res.data.data.anime.info;
-        const truncatedDescription = truncateText(info.description, 950);
-        const caption = `اسم الانمي : ${info.name}\n\n"${truncatedDescription}"\n\nعدد الحلقات: ${info.stats.episodes.sub}`;
+        const fullDescription = `اسم الانمي : ${info.name}\n\n"${info.description}"\n\nعدد الحلقات: ${info.stats.episodes.sub}`;
         
-        ctx.replyWithPhoto(info.poster, {
-            caption,
+        // قص النص إلى الحد الأقصى (1024 حرف)
+        const truncatedCaption = fullDescription.substring(0, 1020) + (fullDescription.length > 1024 ? '...' : '');
+        
+        await ctx.replyWithPhoto(info.poster, {
+            caption: truncatedCaption,
             parse_mode: 'Markdown',
             ...Markup.inlineKeyboard([
                 [Markup.button.callback('جيب جميع الحلقات', `all_${animeId}`)],
                 [Markup.button.callback('جيب اخر حلقة نزلت', `last_${animeId}`)]
             ])
         });
+
+        // إذا كان هناك المزيد من النص، أرسله كرسالة مستقلة
+        if (fullDescription.length > 1024) {
+            await ctx.reply(fullDescription.substring(1024));
+        }
+
     } catch (error) {
         ctx.reply('مشكله...');
     }
-}
-
-function truncateText(text, maxLength) {
-    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
 }
 
 bot.action(/^all_(.+)/, async (ctx) => {
@@ -135,19 +138,17 @@ async function fetchEpisodeLink(episodeId) {
     const servers = ['hd-2', 'hd-1'];
     const categories = ['sub', 'raw']; // نحدد الفئات هنا
     
-    // محاولة استخدام hd-2 ثم hd-1 لكل فئة
     for (let category of categories) {
         for (let server of servers) {
             try {
                 const link = await tryFetchingLink(episodeId, server, category);
-                if (link) return link; // إذا وجدنا الرابط، نعيده
+                if (link) return link;
             } catch (error) {
                 console.error(`Error fetching ${category} link for server ${server}:`, error);
             }
         }
     }
     
-    // إذا فشلنا في الحصول على الرابط، نعيد null
     return null;
 }
 
@@ -155,7 +156,6 @@ async function tryFetchingLink(episodeId, server, category) {
     try {
         const res = await axios.get(`https://aniwatch-api-chi-liard.vercel.app/api/v2/hianime/episode/sources?animeEpisodeId=${episodeId}&server=${server}&category=${category}`);
         if (res.data.success && res.data.data.sources.length > 0) {
-            // نرجع أول رابط م3u8 من المصادر
             return res.data.data.sources[0].url;
         }
     } catch (error) {
@@ -169,5 +169,5 @@ const port = process.env.PORT || 4000;
 
 // بدء تشغيل السيرفر على البورت المحدد
 app.listen(port, () => {
-    console.log(`Server is running on https://bot-discord-js-4xqg.onrender.com (Port: ${port})`);
+    console.log(`Server is running on ${WEBHOOK_URL} (Port: ${port})`);
 });
