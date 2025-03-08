@@ -192,6 +192,10 @@ async function fetchEpisodeLink(episodeId) {
     return null;
 }
 
+function truncateText(text, maxLength) {
+    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+}
+
 const port = process.env.PORT || 4000;
 app.listen(port, () => {
     console.log(`Server is running on ${WEBHOOK_URL} (Port: ${port})`);
