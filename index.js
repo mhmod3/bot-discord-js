@@ -10,7 +10,7 @@ const BOT_TOKEN = process.env.BOT_TOKEN;
 const DEFAULT_API_TOKEN = process.env.DEFAULT_API_TOKEN;
 const WEBHOOK_URL = process.env.WEBHOOK_URL;
 const PORT = process.env.PORT || 3000;
-
+const TOKENS_FILE = './tokens.json';
 
 const bot = new Telegraf(BOT_TOKEN);
 bot.use(session());
@@ -49,13 +49,16 @@ bot.start((ctx) => {
 🧾 الأوامر المتاحة:
 - /sub : لإرسال معرفات الفيديو وملف الترجمة.
 - /vid : لإرسال رابط مباشر للفيديو.
+- /dvid : لحذف مهمة رفع فيديو عبر معرف المهمة.
 - /tokenadd : لإضافة توكن جديد.
-- /tokenc : لاختيار التوكن الذي تريد استخدامه.`);
+- /tokenc : لاختيار التوكن الذي تريد استخدامه.
+
+❌ لإلغاء أي عملية جارية في أي وقت، فقط أرسل 0.`);
 });
 
 bot.command('tokenadd', (ctx) => {
   ctx.session = { step: 'waiting_token_add' };
-  ctx.reply('🔐 أرسل الآن التوكن الذي ترغب في إضافته.');
+  ctx.reply('🔐 أرسل الآن التوكن الذي ترغب في إضافته.\n\n❌ للإلغاء أرسل 0.');
 });
 
 bot.command('tokenc', (ctx) => {
@@ -77,28 +80,38 @@ bot.action(/select_token_(\d+)/, async (ctx) => {
   const index = parseInt(ctx.match[1]);
   const tokens = readTokens();
   const chosenToken = index === 0 ? DEFAULT_API_TOKEN : tokens[index - 1];
-
+  ctx.session = ctx.session || {};
   ctx.session.currentToken = chosenToken;
   await ctx.editMessageText('✅ تم اختيار التوكن بنجاح.');
 });
 
-// ──────── /sub ────────
 bot.command('sub', (ctx) => {
   ctx.session = { step: 'waiting_ids', ids: [] };
-  ctx.reply('📥 أرسل الآن معرفات الفيديو (ID) واحداً تلو الآخر أو دفعة واحدة، ثم أرسل كلمة "تم" عند الانتهاء.');
+  ctx.reply('📥 أرسل الآن معرفات الفيديو (ID) واحداً تلو الآخر أو دفعة واحدة، ثم أرسل كلمة "تم" عند الانتهاء.\n\n❌ للإلغاء أرسل 0.');
 });
 
-// ──────── /vid ────────
 bot.command('vid', (ctx) => {
   ctx.session = { step: 'waiting_video_url' };
-  ctx.reply('الخطوات :\n1. اذهب الى موقع nyaa او الموقع الذي ترغب فيه.\n2. قم بضغط على "Download Torrent" لتحميل ملف التورنت\n3. خذ ملف الترونيت هذه وارسلخ الى هذه البوت "@filetolink4gbHG1bot"\n4. سوف يعطيك هذه البوت رابط خذ هذه الرابط وارسله لي هنا.');
+  ctx.reply('الخطوات :\n1. اذهب الى موقع nyaa او الموقع الذي ترغب فيه.\n2. قم بضغط على "Download Torrent" لتحميل ملف التورنت\n3. خذ ملف الترونيت هذه وارسلخ الى هذه البوت "@filetolink4gbHG1bot"\n4. سوف يعطيك هذه البوت رابط خذ هذه الرابط وارسله لي هنا.\n\nللالغاء ارسل 0');
 });
 
-// ──────── التعامل مع الرسائل النصية ────────
+// ──────── أمر الحذف الجديد /dvid ────────
+bot.command('dvid', (ctx) => {
+  ctx.session = { step: 'waiting_delete_id' };
+  ctx.reply('🗑️ أرسل معرف المهمة (ID) التي تريد حذفها.\n\n❌ للإلغاء أرسل 0.');
+});
+
+// ──────── التعامل مع النصوص ────────
 bot.on('text', async (ctx) => {
   ctx.session = ctx.session || {};
   const { step } = ctx.session;
   const text = ctx.message.text.trim();
+
+  // إلغاء أي خطوة
+  if (text === '0') {
+    ctx.session = {};
+    return ctx.reply('❌ تم إلغاء العملية الجارية.');
+  }
 
   if (step === 'waiting_token_add') {
     if (addToken(text)) {
@@ -107,6 +120,7 @@ bot.on('text', async (ctx) => {
       ctx.reply('⚠️ هذا التوكن موجود مسبقًا.');
     }
     ctx.session.step = null;
+
   } else if (step === 'waiting_ids') {
     if (text.toLowerCase() === 'تم') {
       if (!ctx.session.ids.length) {
@@ -122,6 +136,7 @@ bot.on('text', async (ctx) => {
         await ctx.reply(`✅ تم استلام ID: ${id}`);
       }
     }
+
   } else if (step === 'waiting_video_url') {
     if (!/^https?:\/\//.test(text)) {
       return ctx.reply('❌ الرابط غير صالح.');
@@ -147,10 +162,47 @@ bot.on('text', async (ctx) => {
       ctx.reply('❌ فشل رفع الفيديو.');
     }
     ctx.session.step = null;
+
+  } else if (step === 'waiting_delete_id') {
+    // تنفيذ حذف المهمة عبر API
+    const taskId = text;
+    const token = ctx.session.currentToken || DEFAULT_API_TOKEN;
+
+    try {
+      const res = await axios.delete(`https://upnshare.com/api/v1/video/advance-upload/${encodeURIComponent(taskId)}`, {
+        headers: {
+          'api-token': token,
+          'accept': '*/*'
+        }
+      });
+
+      if (res.status === 204) {
+        ctx.reply(`✅ تم حذف المهمة بنجاح: ${taskId}`);
+      } else {
+        ctx.reply(`❌ لم يتم حذف المهمة. الحالة: ${res.status}`);
+      }
+    } catch (error) {
+      const status = error.response?.status;
+      const message = error.response?.data?.message || error.message;
+      if (status === 400) {
+        ctx.reply(`❌ طلب غير صالح: ${message}`);
+      } else if (status === 401) {
+        ctx.reply(`❌ بيانات اعتماد غير صحيحة.`);
+      } else if (status === 404) {
+        ctx.reply(`❌ المهمة غير موجودة.`);
+      } else if (status === 409) {
+        ctx.reply(`❌ تعارض في العملية: ${message}`);
+      } else if (status === 500) {
+        ctx.reply(`❌ خطأ داخلي في الخادم.`);
+      } else {
+        ctx.reply(`❌ حدث خطأ: ${message}`);
+      }
+    }
+    ctx.session = {};
   }
 });
 
-// ──────── استقبال ملف ZIP ────────
+// ──────── استقبال ملفات ZIP ────────
 bot.on('document', async (ctx) => {
   const { step, ids, currentToken } = ctx.session || {};
   const file = ctx.message.document;
@@ -243,7 +295,7 @@ async function downloadFile(url, dest) {
   });
 }
 
-// ──────── إعداد Webhook ────────
+// ──────── Webhook ────────
 const app = express();
 app.use(bot.webhookCallback('/webhook'));
 bot.telegram.setWebhook(WEBHOOK_URL);
