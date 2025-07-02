@@ -1,17 +1,29 @@
 {
-  "name": "hianime-bot",
+  "name": "subtitle-video-bot",
   "version": "1.0.0",
-  "description": "A Telegram bot using Telegraf to fetch anime episodes from hianime.to",
-  "main": "index.js",
+  "description": "بوت تيليجرام لإدارة الترجمات ورفع الفيديوهات باستخدام Telegraf وWebhook على Render",
+  "main": "bot.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node bot.js"
   },
+  "keywords": [
+    "telegraf",
+    "telegram",
+    "bot",
+    "subtitle",
+    "upload",
+    "webhook"
+  ],
+  "author": "M7mod",
+  "license": "MIT",
   "dependencies": {
-    "axios": "^1.4.0",
-    "telegraf": "^4.12.2",
-    "express": "^4.18.2"
+    "adm-zip": "^0.5.10",
+    "axios": "^1.6.8",
+    "express": "^4.19.2",
+    "form-data": "^4.0.0",
+    "telegraf": "^4.16.0"
   },
   "engines": {
-    "node": "18.x"
+    "node": ">=18"
   }
 }
