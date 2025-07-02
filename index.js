@@ -15,6 +15,14 @@ const TOKENS_FILE = './tokens.json';
 const bot = new Telegraf(BOT_TOKEN);
 bot.use(session());
 
+// تسجيل الأخطاء غير المعالجة على مستوى العملية
+process.on('uncaughtException', (err) => {
+  console.error('💥 Uncaught Exception:', err);
+});
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
 // ──────── قراءة وكتابة التوكنات ────────
 function readTokens() {
   try {
@@ -22,13 +30,18 @@ function readTokens() {
     const data = fs.readFileSync(TOKENS_FILE, 'utf8').trim();
     if (!data) return [];
     return JSON.parse(data);
-  } catch {
+  } catch (err) {
+    console.error('❌ خطأ في قراءة ملف التوكنات:', err);
     return [];
   }
 }
 
 function saveTokens(tokens) {
-  fs.writeFileSync(TOKENS_FILE, JSON.stringify(tokens, null, 2));
+  try {
+    fs.writeFileSync(TOKENS_FILE, JSON.stringify(tokens, null, 2));
+  } catch (err) {
+    console.error('❌ خطأ في حفظ ملف التوكنات:', err);
+  }
 }
 
 function addToken(token) {
@@ -82,7 +95,11 @@ bot.action(/select_token_(\d+)/, async (ctx) => {
   const chosenToken = index === 0 ? DEFAULT_API_TOKEN : tokens[index - 1];
   ctx.session = ctx.session || {};
   ctx.session.currentToken = chosenToken;
-  await ctx.editMessageText('✅ تم اختيار التوكن بنجاح.');
+  try {
+    await ctx.editMessageText('✅ تم اختيار التوكن بنجاح.');
+  } catch (err) {
+    console.error('❌ خطأ في تعديل رسالة اختيار التوكن:', err);
+  }
 });
 
 bot.command('sub', (ctx) => {
@@ -95,7 +112,6 @@ bot.command('vid', (ctx) => {
   ctx.reply('الخطوات :\n1. اذهب الى موقع nyaa او الموقع الذي ترغب فيه.\n2. قم بضغط على "Download Torrent" لتحميل ملف التورنت\n3. خذ ملف الترونيت هذه وارسلخ الى هذه البوت "@filetolink4gbHG1bot"\n4. سوف يعطيك هذه البوت رابط خذ هذه الرابط وارسله لي هنا.\n\nللالغاء ارسل 0');
 });
 
-// ──────── أمر الحذف الجديد /dvid ────────
 bot.command('dvid', (ctx) => {
   ctx.session = { step: 'waiting_delete_id' };
   ctx.reply('🗑️ أرسل معرف المهمة (ID) التي تريد حذفها.\n\n❌ للإلغاء أرسل 0.');
@@ -107,98 +123,101 @@ bot.on('text', async (ctx) => {
   const { step } = ctx.session;
   const text = ctx.message.text.trim();
 
-  // إلغاء أي خطوة
   if (text === '0') {
     ctx.session = {};
     return ctx.reply('❌ تم إلغاء العملية الجارية.');
   }
 
-  if (step === 'waiting_token_add') {
-    if (addToken(text)) {
-      ctx.reply('✅ تم إضافة التوكن.');
-    } else {
-      ctx.reply('⚠️ هذا التوكن موجود مسبقًا.');
-    }
-    ctx.session.step = null;
-
-  } else if (step === 'waiting_ids') {
-    if (text.toLowerCase() === 'تم') {
-      if (!ctx.session.ids.length) {
-        ctx.reply('❌ لم ترسل أي معرف بعد.');
+  try {
+    if (step === 'waiting_token_add') {
+      if (addToken(text)) {
+        ctx.reply('✅ تم إضافة التوكن.');
       } else {
-        ctx.session.step = 'waiting_zip';
-        ctx.reply('📦 أرسل الآن ملف ZIP الذي يحتوي على الترجمات.');
+        ctx.reply('⚠️ هذا التوكن موجود مسبقًا.');
       }
-    } else {
-      const ids = text.split('\n').map(id => id.trim()).filter(Boolean);
-      ctx.session.ids.push(...ids);
-      for (let id of ids) {
-        await ctx.reply(`✅ تم استلام ID: ${id}`);
-      }
-    }
+      ctx.session.step = null;
 
-  } else if (step === 'waiting_video_url') {
-    if (!/^https?:\/\//.test(text)) {
-      return ctx.reply('❌ الرابط غير صالح.');
-    }
-    try {
+    } else if (step === 'waiting_ids') {
+      if (text.toLowerCase() === 'تم') {
+        if (!ctx.session.ids.length) {
+          ctx.reply('❌ لم ترسل أي معرف بعد.');
+        } else {
+          ctx.session.step = 'waiting_zip';
+          ctx.reply('📦 أرسل الآن ملف ZIP الذي يحتوي على الترجمات.');
+        }
+      } else {
+        const ids = text.split('\n').map(id => id.trim()).filter(Boolean);
+        ctx.session.ids.push(...ids);
+        for (let id of ids) {
+          await ctx.reply(`✅ تم استلام ID: ${id}`);
+        }
+      }
+
+    } else if (step === 'waiting_video_url') {
+      if (!/^https?:\/\//.test(text)) {
+        return ctx.reply('❌ الرابط غير صالح.');
+      }
+      try {
+        const token = ctx.session.currentToken || DEFAULT_API_TOKEN;
+        const res = await axios.post(
+          'https://upnshare.com/api/v1/video/advance-upload',
+          {
+            url: text,
+            name: `Uploaded from bot`
+          },
+          {
+            headers: {
+              'api-token': token,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+        ctx.reply(`✅ تم رفع الفيديو. معرف المهمة: ${res.data.id}`);
+      } catch (err) {
+        console.error('❌ خطأ في رفع الفيديو:', err.response?.data || err.message);
+        ctx.reply('❌ فشل رفع الفيديو.');
+      }
+      ctx.session.step = null;
+
+    } else if (step === 'waiting_delete_id') {
+      const taskId = text;
       const token = ctx.session.currentToken || DEFAULT_API_TOKEN;
-      const res = await axios.post(
-        'https://upnshare.com/api/v1/video/advance-upload',
-        {
-          url: text,
-          name: `Uploaded from bot`
-        },
-        {
+
+      try {
+        const res = await axios.delete(`https://upnshare.com/api/v1/video/advance-upload/${encodeURIComponent(taskId)}`, {
           headers: {
             'api-token': token,
-            'Content-Type': 'application/json'
+            'accept': '*/*'
           }
+        });
+
+        if (res.status === 204) {
+          ctx.reply(`✅ تم حذف المهمة بنجاح: ${taskId}`);
+        } else {
+          ctx.reply(`❌ لم يتم حذف المهمة. الحالة: ${res.status}`);
         }
-      );
-      ctx.reply(`✅ تم رفع الفيديو. معرف المهمة: ${res.data.id}`);
-    } catch (err) {
-      console.error(err.response?.data || err.message);
-      ctx.reply('❌ فشل رفع الفيديو.');
-    }
-    ctx.session.step = null;
-
-  } else if (step === 'waiting_delete_id') {
-    // تنفيذ حذف المهمة عبر API
-    const taskId = text;
-    const token = ctx.session.currentToken || DEFAULT_API_TOKEN;
-
-    try {
-      const res = await axios.delete(`https://upnshare.com/api/v1/video/advance-upload/${encodeURIComponent(taskId)}`, {
-        headers: {
-          'api-token': token,
-          'accept': '*/*'
+      } catch (error) {
+        const status = error.response?.status;
+        const message = error.response?.data?.message || error.message;
+        if (status === 400) {
+          ctx.reply(`❌ طلب غير صالح: ${message}`);
+        } else if (status === 401) {
+          ctx.reply(`❌ بيانات اعتماد غير صحيحة.`);
+        } else if (status === 404) {
+          ctx.reply(`❌ المهمة غير موجودة.`);
+        } else if (status === 409) {
+          ctx.reply(`❌ تعارض في العملية: ${message}`);
+        } else if (status === 500) {
+          ctx.reply(`❌ خطأ داخلي في الخادم.`);
+        } else {
+          ctx.reply(`❌ حدث خطأ: ${message}`);
         }
-      });
-
-      if (res.status === 204) {
-        ctx.reply(`✅ تم حذف المهمة بنجاح: ${taskId}`);
-      } else {
-        ctx.reply(`❌ لم يتم حذف المهمة. الحالة: ${res.status}`);
+        console.error('❌ خطأ في حذف المهمة:', error.response?.data || error.message);
       }
-    } catch (error) {
-      const status = error.response?.status;
-      const message = error.response?.data?.message || error.message;
-      if (status === 400) {
-        ctx.reply(`❌ طلب غير صالح: ${message}`);
-      } else if (status === 401) {
-        ctx.reply(`❌ بيانات اعتماد غير صحيحة.`);
-      } else if (status === 404) {
-        ctx.reply(`❌ المهمة غير موجودة.`);
-      } else if (status === 409) {
-        ctx.reply(`❌ تعارض في العملية: ${message}`);
-      } else if (status === 500) {
-        ctx.reply(`❌ خطأ داخلي في الخادم.`);
-      } else {
-        ctx.reply(`❌ حدث خطأ: ${message}`);
-      }
+      ctx.session = {};
     }
-    ctx.session = {};
+  } catch (outerErr) {
+    console.error('❌ خطأ عام في التعامل مع الرسائل النصية:', outerErr);
   }
 });
 
@@ -237,7 +256,7 @@ bot.on('document', async (ctx) => {
 
     ctx.reply('✅ تم رفع الترجمات بنجاح.');
   } catch (err) {
-    console.error(err);
+    console.error('❌ خطأ في استقبال أو رفع ملفات ZIP:', err);
     ctx.reply('❌ حدث خطأ أثناء رفع الترجمات.');
   } finally {
     cleanup(zipPath, extractPath);
@@ -266,7 +285,9 @@ function cleanup(...paths) {
   for (const p of paths) {
     try {
       fs.rmSync(p, { recursive: true, force: true });
-    } catch {}
+    } catch (err) {
+      console.error('❌ خطأ في حذف الملفات المؤقتة:', err);
+    }
   }
 }
 
@@ -277,28 +298,58 @@ async function uploadSubtitle(id, filePath, fileName, token) {
   form.append('name', fileName);
   form.append('file', fs.createReadStream(filePath));
 
-  await axios.put(url, form, {
-    headers: {
-      ...form.getHeaders(),
-      'api-token': token
-    }
-  });
+  try {
+    await axios.put(url, form, {
+      headers: {
+        ...form.getHeaders(),
+        'api-token': token
+      }
+    });
+  } catch (err) {
+    console.error('❌ خطأ في رفع الترجمة:', err.response?.data || err.message);
+    throw err; // ليتوقف التنفيذ عند الخطأ
+  }
 }
 
 async function downloadFile(url, dest) {
   const writer = fs.createWriteStream(dest);
-  const res = await axios.get(url, { responseType: 'stream' });
-  return new Promise((resolve, reject) => {
-    res.data.pipe(writer);
-    writer.on('finish', resolve);
-    writer.on('error', reject);
-  });
+  try {
+    const res = await axios.get(url, { responseType: 'stream' });
+    return new Promise((resolve, reject) => {
+      res.data.pipe(writer);
+      writer.on('finish', resolve);
+      writer.on('error', reject);
+    });
+  } catch (err) {
+    console.error('❌ خطأ في تحميل الملف:', err);
+    throw err;
+  }
 }
 
-// ──────── Webhook ────────
+// ──────── Webhook إعدادات Express ────────
 const app = express();
-app.use(bot.webhookCallback('/webhook'));
-bot.telegram.setWebhook(WEBHOOK_URL);
 
+app.use(express.json()); // مهم لاستقبال JSON
+
+// تسجيل Middleware للأخطاء في Express
+app.use((err, req, res, next) => {
+  console.error('❌ خطأ في Express:', err);
+  res.status(500).send('Internal Server Error');
+});
+
+// ربط Webhook مع البوت
+app.use(bot.webhookCallback('/webhook'));
+
+// نقطة فحص حالة البوت
 app.get('/', (req, res) => res.send('🤖 البوت يعمل باستخدام Webhook'));
-app.listen(PORT, () => console.log(`🚀 السيرفر يعمل على http://localhost:${PORT}`));
+
+// بدء السيرفر
+app.listen(PORT, async () => {
+  try {
+    await bot.telegram.setWebhook(WEBHOOK_URL);
+    console.log(`🚀 السيرفر يعمل على http://localhost:${PORT}`);
+    console.log(`🔗 تم ضبط Webhook على ${WEBHOOK_URL}`);
+  } catch (error) {
+    console.error('❌ خطأ في ضبط Webhook:', error);
+  }
+});
