@@ -1,199 +1,252 @@
-const { Telegraf, Markup } = require('telegraf');
-const axios = require('axios');
+const { Telegraf, session, Markup } = require('telegraf');
 const fs = require('fs');
 const path = require('path');
+const AdmZip = require('adm-zip');
+const axios = require('axios');
+const FormData = require('form-data');
 const express = require('express');
 
+const BOT_TOKEN = process.env.BOT_TOKEN;
+const DEFAULT_API_TOKEN = process.env.DEFAULT_API_TOKEN;
+const WEBHOOK_URL = process.env.WEBHOOK_URL;
+const PORT = process.env.PORT || 3000;
+
+
+const bot = new Telegraf(BOT_TOKEN);
+bot.use(session());
+
+// ──────── قراءة وكتابة التوكنات ────────
+function readTokens() {
+  try {
+    if (!fs.existsSync(TOKENS_FILE)) return [];
+    const data = fs.readFileSync(TOKENS_FILE, 'utf8').trim();
+    if (!data) return [];
+    return JSON.parse(data);
+  } catch {
+    return [];
+  }
+}
+
+function saveTokens(tokens) {
+  fs.writeFileSync(TOKENS_FILE, JSON.stringify(tokens, null, 2));
+}
+
+function addToken(token) {
+  const tokens = readTokens();
+  if (!tokens.includes(token)) {
+    tokens.push(token);
+    saveTokens(tokens);
+    return true;
+  }
+  return false;
+}
+
+// ──────── الأوامر ────────
+bot.start((ctx) => {
+  ctx.session = {};
+  ctx.reply(`👋 أهلاً بك في بوت إدارة الترجمات والفيديو.
+
+🧾 الأوامر المتاحة:
+- /sub : لإرسال معرفات الفيديو وملف الترجمة.
+- /vid : لإرسال رابط مباشر للفيديو.
+- /tokenadd : لإضافة توكن جديد.
+- /tokenc : لاختيار التوكن الذي تريد استخدامه.`);
+});
+
+bot.command('tokenadd', (ctx) => {
+  ctx.session = { step: 'waiting_token_add' };
+  ctx.reply('🔐 أرسل الآن التوكن الذي ترغب في إضافته.');
+});
+
+bot.command('tokenc', (ctx) => {
+  ctx.session = ctx.session || {};
+  const tokens = readTokens();
+  const buttons = [
+    Markup.button.callback(`${ctx.session.currentToken === DEFAULT_API_TOKEN ? '✅ ' : ''}التوكن الافتراضي`, `select_token_0`),
+    ...tokens.map((token, i) =>
+      Markup.button.callback(
+        `${ctx.session.currentToken === token ? '✅ ' : ''}توكن: ${token.slice(0, 8)}...`,
+        `select_token_${i + 1}`
+      )
+    )
+  ];
+  ctx.reply('🎯 اختر التوكن المراد استخدامه:', Markup.inlineKeyboard(buttons, { columns: 1 }));
+});
+
+bot.action(/select_token_(\d+)/, async (ctx) => {
+  const index = parseInt(ctx.match[1]);
+  const tokens = readTokens();
+  const chosenToken = index === 0 ? DEFAULT_API_TOKEN : tokens[index - 1];
+
+  ctx.session.currentToken = chosenToken;
+  await ctx.editMessageText('✅ تم اختيار التوكن بنجاح.');
+});
+
+// ──────── /sub ────────
+bot.command('sub', (ctx) => {
+  ctx.session = { step: 'waiting_ids', ids: [] };
+  ctx.reply('📥 أرسل الآن معرفات الفيديو (ID) واحداً تلو الآخر أو دفعة واحدة، ثم أرسل كلمة "تم" عند الانتهاء.');
+});
+
+// ──────── /vid ────────
+bot.command('vid', (ctx) => {
+  ctx.session = { step: 'waiting_video_url' };
+  ctx.reply('الخطوات :\n1. اذهب الى موقع nyaa او الموقع الذي ترغب فيه.\n2. قم بضغط على "Download Torrent" لتحميل ملف التورنت\n3. خذ ملف الترونيت هذه وارسلخ الى هذه البوت "@filetolink4gbHG1bot"\n4. سوف يعطيك هذه البوت رابط خذ هذه الرابط وارسله لي هنا.');
+});
+
+// ──────── التعامل مع الرسائل النصية ────────
+bot.on('text', async (ctx) => {
+  ctx.session = ctx.session || {};
+  const { step } = ctx.session;
+  const text = ctx.message.text.trim();
+
+  if (step === 'waiting_token_add') {
+    if (addToken(text)) {
+      ctx.reply('✅ تم إضافة التوكن.');
+    } else {
+      ctx.reply('⚠️ هذا التوكن موجود مسبقًا.');
+    }
+    ctx.session.step = null;
+  } else if (step === 'waiting_ids') {
+    if (text.toLowerCase() === 'تم') {
+      if (!ctx.session.ids.length) {
+        ctx.reply('❌ لم ترسل أي معرف بعد.');
+      } else {
+        ctx.session.step = 'waiting_zip';
+        ctx.reply('📦 أرسل الآن ملف ZIP الذي يحتوي على الترجمات.');
+      }
+    } else {
+      const ids = text.split('\n').map(id => id.trim()).filter(Boolean);
+      ctx.session.ids.push(...ids);
+      for (let id of ids) {
+        await ctx.reply(`✅ تم استلام ID: ${id}`);
+      }
+    }
+  } else if (step === 'waiting_video_url') {
+    if (!/^https?:\/\//.test(text)) {
+      return ctx.reply('❌ الرابط غير صالح.');
+    }
+    try {
+      const token = ctx.session.currentToken || DEFAULT_API_TOKEN;
+      const res = await axios.post(
+        'https://upnshare.com/api/v1/video/advance-upload',
+        {
+          url: text,
+          name: `Uploaded from bot`
+        },
+        {
+          headers: {
+            'api-token': token,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      ctx.reply(`✅ تم رفع الفيديو. معرف المهمة: ${res.data.id}`);
+    } catch (err) {
+      console.error(err.response?.data || err.message);
+      ctx.reply('❌ فشل رفع الفيديو.');
+    }
+    ctx.session.step = null;
+  }
+});
+
+// ──────── استقبال ملف ZIP ────────
+bot.on('document', async (ctx) => {
+  const { step, ids, currentToken } = ctx.session || {};
+  const file = ctx.message.document;
+  const ext = path.extname(file.file_name).toLowerCase();
+  if (step !== 'waiting_zip' || ext !== '.zip') return;
+
+  const fileLink = await ctx.telegram.getFileLink(file.file_id);
+  const userId = ctx.from.id;
+  const zipPath = `./temp_${userId}.zip`;
+  const extractPath = `./subs_${userId}`;
+  const token = currentToken || DEFAULT_API_TOKEN;
+
+  try {
+    await downloadFile(fileLink.href, zipPath);
+    const zip = new AdmZip(zipPath);
+    zip.extractAllTo(extractPath, true);
+
+    const subs = getSubtitleFiles(extractPath);
+    if (subs.length !== ids.length) {
+      ctx.reply(`❌ عدد الترجمات (${subs.length}) لا يساوي عدد المعرفات (${ids.length}).`);
+      cleanup(zipPath, extractPath);
+      return;
+    }
+
+    for (let i = 0; i < subs.length; i++) {
+      const ext = path.extname(subs[i]);
+      const newName = `${String(i + 1).padStart(2, '0')}${ext}`;
+      const newPath = path.join(path.dirname(subs[i]), newName);
+      fs.renameSync(subs[i], newPath);
+      await uploadSubtitle(ids[i], newPath, newName, token);
+    }
+
+    ctx.reply('✅ تم رفع الترجمات بنجاح.');
+  } catch (err) {
+    console.error(err);
+    ctx.reply('❌ حدث خطأ أثناء رفع الترجمات.');
+  } finally {
+    cleanup(zipPath, extractPath);
+    ctx.session = {};
+  }
+});
+
+// ──────── دوال مساعدة ────────
+function getSubtitleFiles(dir) {
+  const files = [];
+  function walk(currentPath) {
+    fs.readdirSync(currentPath).forEach(file => {
+      const fullPath = path.join(currentPath, file);
+      if (fs.lstatSync(fullPath).isDirectory()) {
+        walk(fullPath);
+      } else if (['.srt', '.vtt', '.ass'].includes(path.extname(file).toLowerCase())) {
+        files.push(fullPath);
+      }
+    });
+  }
+  walk(dir);
+  return files.sort();
+}
+
+function cleanup(...paths) {
+  for (const p of paths) {
+    try {
+      fs.rmSync(p, { recursive: true, force: true });
+    } catch {}
+  }
+}
+
+async function uploadSubtitle(id, filePath, fileName, token) {
+  const url = `https://upnshare.com/api/v1/video/manage/${id}/subtitle`;
+  const form = new FormData();
+  form.append('language', 'ar');
+  form.append('name', fileName);
+  form.append('file', fs.createReadStream(filePath));
+
+  await axios.put(url, form, {
+    headers: {
+      ...form.getHeaders(),
+      'api-token': token
+    }
+  });
+}
+
+async function downloadFile(url, dest) {
+  const writer = fs.createWriteStream(dest);
+  const res = await axios.get(url, { responseType: 'stream' });
+  return new Promise((resolve, reject) => {
+    res.data.pipe(writer);
+    writer.on('finish', resolve);
+    writer.on('error', reject);
+  });
+}
+
+// ──────── إعداد Webhook ────────
 const app = express();
-app.use(express.json());
-
-const bot = new Telegraf('7524565250:AAGwInP2htEWwrXv9dxgIFwZb11xpiRQJE4');
-
-// إعداد Webhook
-const WEBHOOK_URL = 'https://bot-discord-js-4xqg.onrender.com/webhook';
+app.use(bot.webhookCallback('/webhook'));
 bot.telegram.setWebhook(WEBHOOK_URL);
 
-app.post('/webhook', (req, res) => {
-    bot.handleUpdate(req.body);
-    res.send('ok');
-});
-
-bot.start((ctx) => ctx.reply('هااا ؟'));
-
-let ongoingSearches = new Map();
-let episodeLinksMap = new Map();
-
-bot.on('text', async (ctx) => {
-    const text = ctx.message.text.trim();
-
-    if (ongoingSearches.has(ctx.chat.id)) {
-        const searchResults = ongoingSearches.get(ctx.chat.id);
-        const index = parseInt(text) - 1;
-
-        if (!isNaN(index) && index >= 0 && index < searchResults.length) {
-            ongoingSearches.delete(ctx.chat.id);
-            return fetchAnimeDetails(ctx, searchResults[index].id);
-        }
-    }
-
-    if (text.startsWith('https://hianime.to/')) {
-        const match = text.match(/(?:watch\/)?([\w\-]+-\d+)\??/);
-        if (!match) return ctx.reply('الرابط هذه ما يشتغل');
-        fetchAnimeDetails(ctx, match[1]);
-    } else {
-        searchAnime(ctx, text);
-    }
-});
-
-async function searchAnime(ctx, query) {
-    try {
-        const res = await axios.get(`https://aniwatch-api-chi-liard.vercel.app/api/v2/hianime/search?q=${query}&page=1`);
-        if (!res.data.success || res.data.data.animes.length === 0) return ctx.reply('صالي ساعة ادور ماكو شيء.');
-
-        let message = 'اختر رقم الانمي:\n';
-        res.data.data.animes.forEach((anime, index) => {
-            message += `${index + 1}. ${anime.name}\n`;
-        });
-
-        ongoingSearches.set(ctx.chat.id, res.data.data.animes);
-        ctx.reply(message);
-    } catch (error) {
-        ctx.reply('مشكله...');
-    }
-}
-
-async function fetchAnimeDetails(ctx, animeId) {
-    try {
-        const res = await axios.get(`https://aniwatch-api-chi-liard.vercel.app/api/v2/hianime/anime/${animeId}`);
-        if (!res.data.success) return ctx.reply('ما كدرت اجيب تفاصيل الانمي جيبها لنفسك');
-
-        const info = res.data.data.anime.info;
-        let truncatedDescription = truncateText(info.description, 900);
-
-        let caption = `اسم الانمي : ${info.name}\n\n"${truncatedDescription}"\n\nعدد الحلقات: ${info.stats.episodes.sub}`;
-
-        if (caption.length > 1024) {
-            caption = caption.substring(0, 1021) + '...';
-        }
-
-        ctx.replyWithPhoto(info.poster, {
-            caption,
-            parse_mode: 'Markdown',
-            ...Markup.inlineKeyboard([
-                [Markup.button.callback('جيب جميع الحلقات', `all_${animeId}`)],
-                [Markup.button.callback('جيب اخر حلقة نزلت', `last_${animeId}`)]
-            ])
-        });
-    } catch (error) {
-        ctx.reply('مشكله...');
-    }
-}
-
-function truncateText(text, maxLength) {
-    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
-}
-
-bot.action(/^all_(.+)/, async (ctx) => {
-    const animeId = ctx.match[1];
-    try {
-        const res = await axios.get(`https://aniwatch-api-chi-liard.vercel.app/api/v2/hianime/anime/${animeId}/episodes`);
-        if (!res.data.success) return ctx.reply('مشكله...');
-
-        const episodeIds = res.data.data.episodes.map(ep => ep.episodeId);
-        let links = [];
-        let messageId = await ctx.reply('جاري تحميل الحلقات 0/' + episodeIds.length);
-
-        for (let i = 0; i < episodeIds.length; i++) {
-            const link = await fetchEpisodeLink(episodeIds[i]);
-            if (link) links.push(link);
-            await ctx.telegram.editMessageText(ctx.chat.id, messageId.message_id, null, `جاري تحميل الحلقات ${i + 1}/${episodeIds.length}`);
-        }
-
-        const filename = path.join(__dirname, `${Date.now()}.txt`);
-        fs.writeFileSync(filename, links.join('\n'));
-        await ctx.replyWithDocument({ source: filename });
-
-        episodeLinksMap.set(ctx.chat.id, links);
-        fs.unlinkSync(filename);
-
-        await ctx.reply('اختر الجودة:', Markup.inlineKeyboard([
-            [Markup.button.callback('1080p', 'quality_1080p')],
-            [Markup.button.callback('720p', 'quality_720p')],
-            [Markup.button.callback('480p', 'quality_480p')]
-        ]));
-    } catch (error) {
-        ctx.reply('مشكلة');
-    }
-});
-
-bot.action(/^quality_(\d+p)$/, async (ctx) => {
-    const quality = ctx.match[1];
-    const chatId = ctx.chat.id;
-
-    if (!episodeLinksMap.has(chatId)) {
-        return ctx.reply('المعذرة، لا يوجد بيانات للروابط.');
-    }
-
-    let replacement = {
-        '1080p': 'index-f1-v1-a1.m3u8',
-        '720p': 'index-f2-v1-a1.m3u8',
-        '480p': 'index-f3-v1-a1.m3u8'
-    }[quality];
-
-    const modifiedLinks = episodeLinksMap.get(chatId).map(link => link.replace('master.m3u8', replacement));
-
-    const filename = path.join(__dirname, `${Date.now()}.txt`);
-    fs.writeFileSync(filename, modifiedLinks.join('\n'));
-    await ctx.replyWithDocument({ source: filename });
-
-    fs.unlinkSync(filename);
-    episodeLinksMap.delete(chatId);
-});
-
-bot.action(/^last_(.+)/, async (ctx) => {
-    const animeId = ctx.match[1];
-    try {
-        const res = await axios.get(`https://aniwatch-api-chi-liard.vercel.app/api/v2/hianime/anime/${animeId}/episodes`);
-        if (!res.data.success) return ctx.reply('مشكله...');
-
-        const lastEp = res.data.data.episodes[res.data.data.episodes.length - 1];
-        const link = await fetchEpisodeLink(lastEp.episodeId);
-        if (link) ctx.reply(`رابط الحلقة (${lastEp.number}): ${link}`);
-    } catch (error) {
-        ctx.reply('مشكله...');
-    }
-});
-
-async function fetchEpisodeLink(episodeId) {
-    const servers = ['hd-2', 'hd-1'];
-    const categories = ['sub', 'raw'];
-
-    for (let category of categories) {
-        for (let server of servers) {
-            try {
-                const link = await tryFetchingLink(episodeId, server, category);
-                if (link) return link;
-            } catch (error) {
-                console.error(`Error fetching ${category} link for server ${server}:`, error);
-            }
-        }
-    }
-    return null;
-}
-
-async function tryFetchingLink(episodeId, server, category) {
-    try {
-        const res = await axios.get(`https://aniwatch-api-chi-liard.vercel.app/api/v2/hianime/episode/sources?animeEpisodeId=${episodeId}&server=${server}&category=${category}`);
-        if (res.data.success && res.data.data.sources.length > 0) {
-            return res.data.data.sources[0].url;
-        }
-    } catch (error) {
-        console.error(`Error fetching ${category} link for server ${server}:`, error);
-    }
-    return null;
-}
-
-const port = process.env.PORT || 4000;
-app.listen(port, () => {
-    console.log(`Server is running on ${WEBHOOK_URL} (Port: ${port})`);
-});
+app.get('/', (req, res) => res.send('🤖 البوت يعمل باستخدام Webhook'));
+app.listen(PORT, () => console.log(`🚀 السيرفر يعمل على http://localhost:${PORT}`));
