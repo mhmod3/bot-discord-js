@@ -96,8 +96,8 @@ bot.command('sub', (ctx) => {
 bot.command('vid', (ctx) => {
   ctx.session = ctx.session || {};
   ctx.session.step = 'waiting_video_url';
-  ctx.reply('الخطوات: 1. اذهب الى Nyaa او اي موقع اخر \n2. حمل ملف التورنيت وليس ان تجلب رابط Magnet\n3. قم بإرسال ملف التورنيت الى هذه البوت @filetolink4gbHG1bot\n4
- سيعطيك البوت رابطاً خذ هذه الرابط وارسله لي\n\n❌ للإلغاء أرسل 0.');
+  ctx.reply('الخطوات: 1. اذهب الى Nyaa او أي موقع آخر\n2. حمّل ملف التورنت (وليس رابط Magnet)\n3. أرسله للبوت @filetolink4gbHG1bot\n4. سينتج رابطًا — أرسله هنا\n\n❌ للإلغاء أرسل 0.');
+
 });
 
 bot.command('dvid', (ctx) => {
