@@ -1,10 +1,10 @@
-import { Telegraf, session, Markup } from 'telegraf';
-import fs from 'fs';
-import path from 'path';
-import AdmZip from 'adm-zip';
-import axios from 'axios';
-import FormData from 'form-data';
-import express from 'express';
+const { Telegraf, session, Markup } = require('telegraf');
+const fs = require('fs');
+const path = require('path');
+const AdmZip = require('adm-zip');
+const axios = require('axios');
+const FormData = require('form-data');
+const express = require('express');
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const DEFAULT_API_TOKEN = process.env.DEFAULT_API_TOKEN;
