@@ -8,7 +8,6 @@ const express = require('express');
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const DEFAULT_API_TOKEN = process.env.DEFAULT_API_TOKEN;
-const WEBHOOK_URL = process.env.WEBHOOK_URL;
 const PORT = process.env.PORT || 3000;
 const TOKENS_FILE = './tokens.json';
 
@@ -326,30 +325,30 @@ async function downloadFile(url, dest) {
   }
 }
 
-// ──────── Webhook إعدادات Express ────────
-const app = express();
+// ──────── keep_alive ────────
+function keep_alive() {
+  const app = express();
 
-app.use(express.json()); // مهم لاستقبال JSON
+  app.get('/', (req, res) => {
+    res.send('🤖 البوت يعمل وجاهز للعمل');
+  });
 
-// تسجيل Middleware للأخطاء في Express
-app.use((err, req, res, next) => {
-  console.error('❌ خطأ في Express:', err);
-  res.status(500).send('Internal Server Error');
-});
+  app.listen(PORT, () => {
+    console.log(`🚀 سيرفر keep_alive يعمل على المنفذ ${PORT}`);
+  });
+}
 
-// ربط Webhook مع البوت
-app.use(bot.webhookCallback('/webhook'));
-
-// نقطة فحص حالة البوت
-app.get('/', (req, res) => res.send('🤖 البوت يعمل باستخدام Webhook'));
-
-// بدء السيرفر
-app.listen(PORT, async () => {
+// تشغيل البوت بطريقة polling
+(async () => {
+  keep_alive();
   try {
-    await bot.telegram.setWebhook(WEBHOOK_URL);
-    console.log(`🚀 السيرفر يعمل على http://localhost:${PORT}`);
-    console.log(`🔗 تم ضبط Webhook على ${WEBHOOK_URL}`);
-  } catch (error) {
-    console.error('❌ خطأ في ضبط Webhook:', error);
+    await bot.launch();
+    console.log('🚀 البوت بدأ بالعمل بنجاح (polling)');
+  } catch (err) {
+    console.error('❌ خطأ في تشغيل البوت:', err);
   }
-});
+})();
+
+// إيقاف البوت بشكل نظيف عند إشارة الإنهاء
+process.once('SIGINT', () => bot.stop('SIGINT'));
+process.once('SIGTERM', () => bot.stop('SIGTERM'));
