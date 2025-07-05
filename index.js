@@ -22,7 +22,7 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
-// ──────── قراءة وكتابة التوكنات ────────
+// قراءة وكتابة التوكنات
 function readTokens() {
   try {
     if (!fs.existsSync(TOKENS_FILE)) return [];
@@ -53,7 +53,24 @@ function addToken(token) {
   return false;
 }
 
-// ──────── الأوامر ────────
+// دالة تجزئة نص إلى عدة أجزاء بحد أقصى للحجم
+function splitMessage(text, maxLength = 4000) {
+  const lines = text.split('\n');
+  const messages = [];
+  let currentMessage = '';
+
+  for (const line of lines) {
+    if ((currentMessage + line + '\n').length > maxLength) {
+      messages.push(currentMessage.trim());
+      currentMessage = '';
+    }
+    currentMessage += line + '\n';
+  }
+  if (currentMessage.trim()) messages.push(currentMessage.trim());
+  return messages;
+}
+
+// الأوامر
 bot.start((ctx) => {
   ctx.session = {};
   ctx.reply(`👋 أهلاً بك في بوت إدارة الترجمات والفيديو.
@@ -108,7 +125,7 @@ bot.command('sub', (ctx) => {
 
 bot.command('vid', (ctx) => {
   ctx.session = { step: 'waiting_video_url' };
-  ctx.reply('الخطوات :\n1. اذهب الى موقع nyaa او الموقع الذي ترغب فيه.\n2. قم بضغط على "Download Torrent" لتحميل ملف التورنت\n3. خذ ملف الترونيت هذه وارسلخ الى هذه البوت "@filetolink4gbHG1bot"\n4. سوف يعطيك هذه البوت رابط خذ هذه الرابط وارسله لي هنا.\n\nللالغاء ارسل 0');
+  ctx.reply('الخطوات :\n1. اذهب الى موقع nyaa او الموقع الذي ترغب فيه.\n2. قم بضغط على "Download Torrent" لتحميل ملف التورنت\n3. خذ ملف التورنت هذه وارسلخ الى هذه البوت "@filetolink4gbHG1bot"\n4. سوف يعطيك هذه البوت رابط خذ هذه الرابط وارسله لي هنا.\n\nللالغاء ارسل 0');
 });
 
 bot.command('dvid', (ctx) => {
@@ -116,7 +133,7 @@ bot.command('dvid', (ctx) => {
   ctx.reply('🗑️ أرسل معرف المهمة (ID) التي تريد حذفها.\n\n❌ للإلغاء أرسل 0.');
 });
 
-// ──────── التعامل مع النصوص ────────
+// التعامل مع النصوص
 bot.on('text', async (ctx) => {
   ctx.session = ctx.session || {};
   const { step } = ctx.session;
@@ -145,10 +162,22 @@ bot.on('text', async (ctx) => {
           ctx.reply('📦 أرسل الآن ملف ZIP الذي يحتوي على الترجمات.');
         }
       } else {
+        // استقبال عدة IDs دفعة واحدة مع تجميعها
         const ids = text.split('\n').map(id => id.trim()).filter(Boolean);
         ctx.session.ids.push(...ids);
-        for (let id of ids) {
-          await ctx.reply(`✅ تم استلام ID: ${id}`);
+
+        // إنشاء نص موحد للرد بدلاً من رسالة لكل ID
+        let replyText = '✅ تم استلام المعرفات التالية:\n';
+        for (const id of ids) {
+          replyText += `${id}\n`;
+        }
+
+        // تقسيم الرسائل إذا كانت طويلة جداً
+        const messages = splitMessage(replyText);
+
+        // إرسال الرسائل كلها (ليس بالضرورة انتظار كل واحدة)
+        for (const msg of messages) {
+          await ctx.reply(msg);
         }
       }
 
@@ -220,7 +249,7 @@ bot.on('text', async (ctx) => {
   }
 });
 
-// ──────── استقبال ملفات ZIP ────────
+// استقبال ملفات ZIP
 bot.on('document', async (ctx) => {
   const { step, ids, currentToken } = ctx.session || {};
   const file = ctx.message.document;
@@ -263,7 +292,7 @@ bot.on('document', async (ctx) => {
   }
 });
 
-// ──────── دوال مساعدة ────────
+// دوال مساعدة
 function getSubtitleFiles(dir) {
   const files = [];
   function walk(currentPath) {
@@ -306,7 +335,7 @@ async function uploadSubtitle(id, filePath, fileName, token) {
     });
   } catch (err) {
     console.error('❌ خطأ في رفع الترجمة:', err.response?.data || err.message);
-    throw err; // ليتوقف التنفيذ عند الخطأ
+    throw err;
   }
 }
 
@@ -325,7 +354,7 @@ async function downloadFile(url, dest) {
   }
 }
 
-// ──────── keep_alive ────────
+// keep_alive
 function keep_alive() {
   const app = express();
 
