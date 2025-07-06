@@ -21,7 +21,8 @@
     "axios": "^1.6.8",
     "express": "^4.19.2",
     "form-data": "^4.0.0",
-    "telegraf": "^4.16.0"
+    "telegraf": "^4.16.0",
+    "telegraf-session-local": "^1.4.0"
   },
   "engines": {
     "node": ">=18"
